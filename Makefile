@@ -1,7 +1,11 @@
 all: c.txt go.txt rs.txt grep.txt ripgrep.txt js.txt
 
+time: scan-c
+	time ./scan-c < super.tar > c.txt
+	diff -q c.txt prev.txt || diff c.txt prev.txt | wc -l
+
 scan-c: main.c
-	$(CC) -O -o $@ $<
+	$(CC) -Werror -Wall -O3 -o $@ $<
 
 scan-go: main.go
 	go build -o $@ $<
