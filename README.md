@@ -57,63 +57,11 @@ image tar file) representative of my intended workload.
 The times themselves don't matter much; I'm more interested in how the different
 implementations compare to each other.
 
-### grep
-
-```
-time grep -E -a -o '[0-9a-f]{40}' < raw.tar > grep.txt
-
-real    0m8.105s
-user    0m7.194s
-sys     0m0.893s
-```
-
-### ripgrep
-
-```
-time rg -o -a '[a-f0-9]{40}' < raw.tar > ripgrep.txt
-
-real    0m0.821s
-user    0m0.735s
-sys     0m0.071s
-```
-
-### Custom Algorithm (C)
-
-```
-time ./scan-c < raw.tar > c.txt
-
-real    0m0.163s
-user    0m0.093s
-sys     0m0.065s
-```
-
-### Custom Go
-
-```
-time ./scan-go < raw.tar > go.txt
-
-real    0m2.242s
-user    0m1.797s
-sys     0m0.774s
-
-```
-
-### Custom Rust
-
-```
-time ./scan-rs < raw.tar > rs.txt
-
-real    0m0.922s
-user    0m0.675s
-sys     0m0.244s
-```
-
-### Custom Node.js
-
-```
-time node main.js < raw.tar > js.txt
-
-real    0m3.713s
-user    0m3.113s
-sys     0m0.732s
-```
+| Time | real | user | system |
+|------|------|------|--------|
+| grep | 0m8.105s | 0m7.194s | 0m0.893s |
+| ripgrep | 0m0.821s | 0m0.735s | 0m0.071s |
+| simple (Go) | 0m2.242s | 0m1.797s | 0m0.774s |
+| simple (Rust) | 0m0.922s | 0m0.675s | 0m0.244s |
+| simple (Node) | 0m3.713s | 0m3.113s | 0m0.732s |
+| custom (C) | **0m0.163s** | **0m0.093s** | **0m0.065s** |
