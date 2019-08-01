@@ -3,22 +3,68 @@
 The goal is to extract every 40 character hex string from a source and print
 them for later examination to see if they are valid git commit shas.
 
+Something _kinda_ like this, except filtering out hex strings longer than 40
+characters.
+
 ```
 $ grep -o -E '/[0-9a-f]{40}/' < input > maybe-commits.txt
 ```
 
-The obstacle is this needs to be run over a lot of data and fairly frequently.
+The obstacle is this needs to be run over a lot of data and fairly frequently,
+so it is probably worth optimizing. Or at least considering optimizing.
+
+## Inspiration
+
+The gold standard for multi-string searching is [Aho-Corasick (and
+variants)](https://en.wikipedia.org/wiki/Aho%E2%80%93Corasick_algorithm). It's
+very cool and I wish I could use it. The problem is this particular pattern
+explodes in to 2^160 strings, which would kind of break a naive dictionary
+approach. But hey, if you notice the repetition in the pattern you'll realize it
+can basically be collapsed to a single string! Now we've basically optimized
+away the very property that makes Aho-Corasick fast: variance.
+
+Since we know that the input pattern can essentially be collapsed to a single
+string-ish, we can look at single-string searches. The gold standard here is
+[Boyer-Moore (and
+variants)](https://en.wikipedia.org/wiki/Boyer%E2%80%93Moore_string-search_algorithm).
+These algorithms work by combining a couple cool tricks. The first is they
+pre-compute a jump table for the needle so that given any character you can
+immediately make the optimal shift in the haystack. The second clever trick is
+to search from the end of the needle and move backwards, which lets you skip up
+to the entire needle length in the best cases.
+
+## Implementation
+
+Naive implementations were done (in order) in Rust, Go, and JavaScript (node).
+After implementing the same naive implementation in C I started down the path
+that brought me here. In all cases, there are no dependencies other than the
+relevant compiler/runtime; just standard i/o.
+
+By applying some of the Boyer-Moore approach to a pattern instead of a string,
+we can gain a couple features. We don't need to pre-process the needle since
+each byte of the needle is effectively identical, but we can still make use of
+the skipping because we do have a known fixed length.
+
+In theory, what we end up with is a special case of what a good regular
+expression engine would generate, but without the overhead of supporting other
+types of patterns.
 
 ## Times
+
+These times are best of 3 runs of piping the same 329M sample file (a docker
+image tar file) representative of my intended workload.
+
+The times themselves don't matter much; I'm more interested in how the different
+implementations compare to each other.
 
 ### grep
 
 ```
 time grep -E -a -o '[0-9a-f]{40}' < raw.tar > grep.txt
 
-real    0m8.492s
-user    0m7.396s
-sys     0m1.033s
+real    0m8.105s
+user    0m7.194s
+sys     0m0.893s
 ```
 
 ### ripgrep
@@ -26,19 +72,19 @@ sys     0m1.033s
 ```
 time rg -o -a '[a-f0-9]{40}' < raw.tar > ripgrep.txt
 
-real    0m0.845s
-user    0m0.734s
-sys     0m0.084s
+real    0m0.821s
+user    0m0.735s
+sys     0m0.071s
 ```
 
-### Custom C
+### Custom Algorithm (C)
 
 ```
 time ./scan-c < raw.tar > c.txt
 
-real    0m0.838s
-user    0m0.761s
-sys     0m0.073s
+real    0m0.163s
+user    0m0.093s
+sys     0m0.065s
 ```
 
 ### Custom Go
@@ -57,9 +103,9 @@ sys     0m0.774s
 ```
 time ./scan-rs < raw.tar > rs.txt
 
-real    0m0.952s
-user    0m0.682s
-sys     0m0.261s
+real    0m0.922s
+user    0m0.675s
+sys     0m0.244s
 ```
 
 ### Custom Node.js
@@ -67,7 +113,7 @@ sys     0m0.261s
 ```
 time node main.js < raw.tar > js.txt
 
-real    0m3.783s
-user    0m3.144s
-sys     0m0.787s
+real    0m3.713s
+user    0m3.113s
+sys     0m0.732s
 ```

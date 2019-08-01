@@ -15,14 +15,22 @@ scan-rs: main.rs
 
 %.txt: scan-% raw.tar
 	time ./scan-$* < raw.tar > $@
+	time ./scan-$* < raw.tar > $@
+	time ./scan-$* < raw.tar > $@
 
 js.txt: main.js raw.tar
+	time node main.js < raw.tar > $@
+	time node main.js < raw.tar > $@
 	time node main.js < raw.tar > $@
 
 grep.txt: raw.tar
 	time grep -E -a -o '[0-9a-f]{40}' < raw.tar > $@
+	time grep -E -a -o '[0-9a-f]{40}' < raw.tar > $@
+	time grep -E -a -o '[0-9a-f]{40}' < raw.tar > $@
 
 ripgrep.txt: raw.tar
+	time rg -o -a '[a-f0-9]{40}' < raw.tar > $@
+	time rg -o -a '[a-f0-9]{40}' < raw.tar > $@
 	time rg -o -a '[a-f0-9]{40}' < raw.tar > $@
 
 raw.tar:
