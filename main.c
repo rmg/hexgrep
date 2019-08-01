@@ -7,9 +7,59 @@
 #include <stdint.h>
 #include <assert.h>
 
-#define INST(x) x
-// #define INST(x)
+#define DO_INST 0
+#define USE_HEX_TABLE 1
 
+#if DO_INST
+    #define STATIC
+    #define INST(x) x
+    #define DO_DUMP
+#else
+    #define INST(x)
+    #define STATIC static
+#endif
+
+
+INST(
+    static int_fast32_t cmp = 0;
+    static uint_fast32_t hits = 0;
+    static uint_fast32_t short_runs = 0;
+    static uint_fast32_t long_runs = 0;
+    static uint_fast32_t short_run[41] = {0};
+    static uint_fast32_t long_run[40] = {0};
+)
+
+#ifndef NDEBUG
+#define assert_not_hex(X) assert(!lhex[(unsigned char)X]);
+#define assert_hex(X) assert(lhex[(unsigned char)X]);
+#else
+#define assert_not_hex(X)
+#define assert_hex(X)
+#endif
+
+#ifdef DO_DUMP
+STATIC void dump_buf(char *buf, size_t MAX, int_fast32_t i) {
+    dprintf(2, "buf [%d/%zu] [", i, MAX);
+    for (int_fast32_t o = -20; o < 20; o++) {
+        if (i + o > 0 && i + o < MAX) {
+            if (o) {
+                dprintf(2, " %x ", buf[i+o]);
+            } else {
+                dprintf(2, " <%x> ", buf[i+o]);
+            }
+        }
+    }
+    dprintf(2, "]\n");
+}
+#endif
+
+STATIC void print_hit(char *buf) {
+    INST(hits++);
+    printf("%.40s\n", buf);
+}
+
+
+#if USE_HEX_TABLE
 static const bool lhex[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -28,38 +78,25 @@ static const bool lhex[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
-INST(static int_fast32_t cmp = 0);
-INST(static uint_fast32_t hits = 0);
-INST(static uint_fast32_t short_runs = 0);
-INST(static uint_fast32_t long_runs = 0);
-INST(static uint_fast32_t short_run[41] = {0});
-
-static void print_hit(char *buf) {
-    INST(hits++);
-    printf("%.40s\n", buf);
-}
-
-// #define assert_not_hex(x)
-static void assert_not_hex(unsigned char b) {
-    assert(!lhex[b]);
-}
-
-// #define assert_hex(x)
-static void assert_hex(unsigned char b) {
-    assert(lhex[b]);
-}
+#endif
 
 // nobody write a git sha using uppercase hex, it's always lowercase
-static bool is_lower_hex(unsigned char b) {
+STATIC bool is_lower_hex(unsigned char b) {
     INST(cmp++);
+#if USE_HEX_TABLE
     return lhex[b];
-    // return (b >= '0' && b <= '9') || (b >= 'a' && b <= 'f');
+#else
+    return (b >= '0' && b <= '9') || (b >= 'a' && b <= 'f');
+#endif
 }
 
-static int_fast32_t scan_skip(char *buf, size_t MAX, int_fast32_t i) {
+STATIC int_fast32_t scan_skip(char *buf, size_t MAX, int_fast32_t i) {
     assert_not_hex(buf[i]);
 
-    int_fast32_t skip = 40, io = i;
+    int_fast32_t skip = 40;
+#ifndef NDEBUG
+    int_fast32_t io = i;
+#endif
     do {
         while (i + skip < MAX && !is_lower_hex(buf[i+skip])) {
             i += skip;
@@ -67,78 +104,99 @@ static int_fast32_t scan_skip(char *buf, size_t MAX, int_fast32_t i) {
         skip /= 2;
     } while (skip > 1 && i + skip < MAX);
     assert(io <= i);
-    // if (io >= i) {
-    //     dprintf(2, "bad skip: %d >= %d, MAX: %zu, skip: %d, char: ['%c', *'%c', '%c']\n", io, i, MAX, skip, buf[i-1], buf[i], buf[i+1]);
-    // }
+    if (i >= MAX) {
+        INST(dump_buf(buf, MAX, i));
+    }
     assert(i < MAX);
-    // if (i+1 == MAX)
     return i+1;
 }
 
-// static int_fast32_t scan_hit(char *buf, size_t MAX, int_fast32_t i) {
-//     int_fast32_t right = i+40;
-//     int_fast32_t count = 0;
-
-
-//     bool maybe_terminated = !is_lower_hex(buf[i+41]);
-//     if (maybe_terminated) {
-//         while (right > i) {
-//             if (is_lower_hex(buf[right])) {
-//                 count++;
-//                 right--;
-//                 continue;
-//             }
-//             return scan_skip(buf, MAX, right);
-//         }
-//         if (count == 40 && right == i) {
-//             print_hit(i);
-//         }
-//     }
-
-// }
-
-int_fast32_t scan_hit_long(char *buf, size_t MAX, int_fast32_t i) {
+STATIC int_fast32_t find_start(char *buf, size_t MAX, int_fast32_t MIN, int_fast32_t i) {
     assert_hex(buf[i]);
-    // just blindly eat all the hexes..
-    while (i < MAX) {
-        if (is_lower_hex(buf[i])) {
-            i++;
-            continue;
+    while (i > MIN) {
+        if (is_lower_hex(buf[i-1])) {
+            i--;
+        } else {
+            break;
         }
-        break;
     }
+    assert(i >= MIN);
+    assert_hex(buf[i]);
     return i;
 }
 
+STATIC int_fast32_t scan_hit_short(char *buf, size_t MAX, int_fast32_t i);
 
-/*
-Long runs:       276738
-Exact runs:      184227
-Short runs:     3763173
-Short runs:      611334 (2)
-Short runs:      181262 (32)
-Short runs:      137846 (3)
-Short runs:      133480 (5)
-Short runs:      104525 (31)
-Short runs:      101972 (4)
-*/
 
-// static
-int_fast32_t scan_hit_short(char *buf, size_t MAX, int_fast32_t i) {
+STATIC int_fast32_t scan_hit_long(char *buf, size_t MAX, int_fast32_t i) {
     assert_hex(buf[i]);
 
-#define NEED_HEX(N) if (!is_lower_hex(buf[i+N])) return scan_skip(buf, MAX, i+N)
+    // special case.. if we don't have enough room left in the buffer, just return
+    if (i+30 >= MAX) {
+        return i;
+    }
 
-    // unrolled checking the next 41 bytes (must be terminated)
-    // ordered for optimal early return based on most frequent lengths
-    // of short runs
-    NEED_HEX(32);
-    NEED_HEX(2);
-    NEED_HEX(1);
+    // given we are at 41 in length already, then we know the closest the next
+    // valid run of 40 starts at would be i+2 to i+42
+    // interesting to know, but not particularly useful.
+
+    // what is useful is knowing that the majority of hex strings over 40
+    // characters long are sha256 digests, being 64 digits long. We also know
+    // that there's also a significant number of runs longer than that, but that
+    // they drop off dramatically.
+
+    // a hex string of 50 characters is extremely unlikely if we hit a non-hex
+    // at 50 we know that the current run ends before then and that any runs
+    // between here and there are too short to care about.
+
+    assert(i+30 < MAX);
+
+    if (!is_lower_hex(buf[i+30])) {
+        return scan_skip(buf, MAX, i+30);
+    }
+
+    // if we saw a hex at i+30 it is most likely part of the next run and we
+    // need to find where it starts.
+
+    int_fast32_t start = find_start(buf, MAX, i, i+30);
+    if (start == i) {
+        // wow, it really was part of the current run!
+        return scan_hit_long(buf, MAX, i+30);
+    }
+    assert_hex(buf[start]);
+    assert_not_hex(buf[start-1]);
+    return scan_hit_short(buf, MAX, start);
+}
+
+STATIC int_fast32_t scan_hit_short(char *buf, size_t MAX, int_fast32_t i) {
+    assert_hex(buf[i]);
+
+#define NEED_HEX(N) if (!is_lower_hex(buf[i+N])) { INST(short_runs++); INST(short_run[N]++); return scan_skip(buf, MAX, i+N); }
+
+    // Can't possibly match, we don't have enough room left. Since we know we'll
+    // scan these on the next pass it is better to return early instead of
+    // scanning them twice.
+    if (i+40 >= MAX) {
+        return i;
+    }
+
+    // Unrolled checking the next 40 bytes (must be terminated). We know the
+    // most frequent lengths of short hex strings, so we for those first by
+    // looking at N+1
     NEED_HEX(3);
+    NEED_HEX(33);
     NEED_HEX(4);
-    NEED_HEX(5);
     NEED_HEX(6);
+    NEED_HEX(32);
+
+    // TODO: the rest of these could be tuned but it likely won't make too much
+    // difference since the first 2 cover the majority of cases anyway.
+    NEED_HEX(1);
+    NEED_HEX(2);
+    // NEED_HEX(3);
+    // NEED_HEX(4);
+    NEED_HEX(5);
+    // NEED_HEX(6);
     NEED_HEX(7);
     NEED_HEX(8);
     NEED_HEX(9);
@@ -164,7 +222,8 @@ int_fast32_t scan_hit_short(char *buf, size_t MAX, int_fast32_t i) {
     NEED_HEX(29);
     NEED_HEX(30);
     NEED_HEX(31);
-    NEED_HEX(33);
+    // NEED_HEX(32);
+    // NEED_HEX(33);
     NEED_HEX(34);
     NEED_HEX(35);
     NEED_HEX(36);
@@ -179,73 +238,8 @@ int_fast32_t scan_hit_short(char *buf, size_t MAX, int_fast32_t i) {
     return scan_hit_long(buf, MAX, i+40);
 }
 
-#if 1
-// i is a hit
-//static
-int_fast32_t scan_hit(char *buf, size_t MAX, int_fast32_t i) {
-    // if (i + 41 > MAX) {
-    //     // we don't have enough room to get a hit
-    // }
-    assert_hex(buf[i]);
-    // good skip, decent odds
-    if (!is_lower_hex(buf[i+33])) {
-        return scan_skip(buf, MAX, i+33);
-    }
-    // short skip, excellent odds
-    if (!is_lower_hex(buf[i+3])) {
-        return scan_skip(buf, MAX, i+3);
-    }
-    // long skip, even odds
-    if (!is_lower_hex(buf[i+39])) {
-        return scan_skip(buf, MAX, i+39);
-    }
-    // mm
-    // if (is_lower_hex(buf[i + 41])) {
-    //     return i+41;
-    //     // dprintf(2, "too long: %41s\n", buf+i);
-    //     // find next possible starting point
-    //     // return scan_skip(buf, MAX, i+40);
-    // }
-    int_fast32_t count = 0;
-    while (i < MAX) {
-        if (is_lower_hex(buf[i])) {
-            count++;
-            i++;
-            continue;
-        }
-        break;
-    }
-    if (count == 40) {
-        print_hit(buf+i-40);
-    }
-    return i;
-
-    // // if i is a hit and i+41 is a hit,
-    // // then i..40 is too long or too short
-
-    // int_fast32_t count = 1;
-    // while (i+count < MAX && is_lower_hex(buf[i+count])) {
-    //     count++;
-    // }
-    // if (count == 40) {
-    //     print_hit(buf);
-    //     // return i;
-    // }
-    // return i+count+1;
-
-    //  skip; skip--) {
-    // for (int_fast32_t skip = 40; skip; skip--) {
-    //     if (!is_lower_hex(buf[i+skip])) {
-    //         return scan_skip(buf, MAX, i+skip);
-    //     }
-    // }
-    // print_hit(buf);
-    // return i+41;
-}
-
-
-static int_fast32_t scan_slice_fast(char *buf, size_t MAX, int_fast32_t count) {
-    int_fast32_t i = 0, io = 0; //, r = 0, l = 0;
+STATIC int_fast32_t scan_slice_fast(char *buf, size_t MAX, int_fast32_t count) {
+    int_fast32_t i = 0, io = 0;
 
     do {
         io = i;
@@ -256,84 +250,15 @@ static int_fast32_t scan_slice_fast(char *buf, size_t MAX, int_fast32_t count) {
             i = scan_skip(buf, MAX, i);
             assert(i > io);
         }
-
-        // if (count == 0) {
-        //     while (i+40 < MAX && !is_lower_hex(buf[i+40])) {
-        //         i += 40;
-        //     }
-        //     while (i+20 < MAX && !is_lower_hex(buf[i+20])) {
-        //         i += 20;
-        //     }
-        // }
-        // hit a non-hex
-        // if we just ended a 40-hex run, print it
-        // if (count == 40) {
-        //     print_hit(buf + i - count);
-        // }
-        // count = 0;
-        // i = scan_skip(buf, MAX, i);
     } while (i < MAX - 41);
     if (count > 40) {
         count = 41;
     }
     i -= count;
     return MAX-i;
-    // return MAX-i-count;
-    // return count;
 }
 
-#else
-static int_fast32_t scan_slice_fast(char *buf, size_t MAX, int_fast32_t count) {
-    int_fast32_t i = 0; //, r = 0, l = 0;
-
-    for (; i +41 < MAX; ) {
-        // eat all the hexes!
-        if (is_lower_hex(buf[i])) {
-            assert_hex(buf[i]);
-            count++;
-            i++;
-            // if (count < 40 && !is_lower_hex(buf[i+40-count])) {
-            //     i = scan_skip(buf, MAX, i+40-count);
-            //     count = 0;
-            // }
-            continue;
-        }
-        // if (count == 0) {
-        //     while (i+40 < MAX && !is_lower_hex(buf[i+40])) {
-        //         i += 40;
-        //     }
-        //     while (i+20 < MAX && !is_lower_hex(buf[i+20])) {
-        //         i += 20;
-        //     }
-        // }
-        // hit a non-hex
-        // if we just ended a 40-hex run, print it
-        if (count < 40) {
-            INST(short_runs++);
-            INST(short_run[count]++);
-        } if (count == 40) {
-            print_hit(buf + i - count);
-        } else if (count> 40) {
-            INST(long_runs++);
-        }
-        count = 0;
-        i = scan_skip(buf, MAX, i);
-    }
-    if (count > 40) {
-        count = 41;
-    }
-    assert(i <= MAX);
-    i -= count;
-    assert(i <= MAX);
-    return MAX-i;
-    // return MAX-i-count;
-    // return count;
-}
-#endif
-
-
-
-static int_fast32_t scan_all_slow(char *buf, size_t MAX) {
+STATIC int_fast32_t scan_all_slow(char *buf, size_t MAX) {
     int_fast32_t count = 0;
     for (int_fast32_t i = 0; i < MAX; i++) {
         if (is_lower_hex(buf[i])) {
@@ -352,7 +277,7 @@ static int_fast32_t scan_all_slow(char *buf, size_t MAX) {
     return count;
 }
 
-const size_t MAX_BUF = 64*1024;
+STATIC const size_t MAX_BUF = 64*1024;
 
 int main(int argc, char *argv[]) {
     char buf[MAX_BUF];
@@ -362,7 +287,6 @@ int main(int argc, char *argv[]) {
     ssize_t nread = 0;
     int_fast32_t max_scan = 0;
     int fd = 0;
-    // bool dangling_hit = false;
     if (argc > 1) {
         fd = open(argv[1], O_RDONLY);
     }
@@ -370,36 +294,35 @@ int main(int argc, char *argv[]) {
     while ((nread = read(fd, buf+remainder, MAX_BUF-remainder)) > 0) {
         total_read += nread;
         max_scan = nread + remainder;
+        if (max_scan < 41) {
+            remainder = max_scan;
+            continue;
+        }
         remainder = scan_slice_fast(buf, max_scan, count);
-        // dprintf(2, "remainder:  %10d (%d)\n", remainder, hits);
-        // if (hits == 104418) {
-        //     dprintf(2, "interesting index: %lu\n", total_read - remainder);
-        // }
+        // INST(dprintf(2, "remainder:  %10d (%d)\n", remainder, hits));
         if (remainder) {
             memmove(buf, buf+max_scan-remainder, remainder);
         }
-        // dangling_hit = (remainder > 0 && remainder <= 40);
-        // if (dangling_hit) {
-        //     memmove(buf, buf+max_scan-remainder, remainder);
-        //     count = 0;
-        // } else {
-        //     count = 41;
-        // }
     }
     if (remainder >= 40) {
         scan_all_slow(buf+max_scan-remainder, remainder);
     }
-    // if (dangling_hit) {
-    //     print_hit(buf+max_scan-40);
-    // }
     dprintf(2, "Bytes read:  %10zu\n", total_read);
-    INST(dprintf(2, "Comparisons: %10d (%d)\n", cmp, cmp-134030479));
-    INST(dprintf(2, "Short runs:  %10d\n", short_runs));
+
+#if DO_INST
+    // 115209474/1033491456 are the results from a sample file
+    dprintf(2, "Comparisons: %10d (%d)\n", cmp, cmp-115209474);
+    dprintf(2, "Short runs:  %10d\n", short_runs);
     for (int i = 1; i < 40; i++) {
-        INST(dprintf(2, "Short runs:  %10d (%d)\n", short_run[i], i));
+        dprintf(2, "Short runs:  %10d (%d)\n", short_run[i], i);
     }
-    INST(dprintf(2, "Long runs:   %10d\n", long_runs));
-    INST(dprintf(2, "Exact runs:  %10d\n", hits));
+    dprintf(2, "Exact runs:  %10d\n", hits);
+    dprintf(2, "Long runs:   %10d\n", long_runs);
+    for (int i = 1; i < 40; i++) {
+        dprintf(2, "Long  runs:  %10d (+%d)\n", long_run[i], i);
+    }
+#endif
+
     return nread;
 }
 
@@ -408,8 +331,7 @@ int main(int argc, char *argv[]) {
 /*
 Bytes read:  1033491456
 Comparisons:  134030479 (0)
-Long runs:       276738
-Exact runs:      184227
+
 Short runs:     3763173
 Short runs:      611334 (2)
 Short runs:      181262 (32)
@@ -450,4 +372,48 @@ Short runs:         549 (34)
 Short runs:         489 (35)
 Short runs:         444 (17)
 Short runs:         413 (37)
+
+Exact runs:      184227
+Long runs:       276738
+
+Long  runs:        5562 (+1)
+Long  runs:        1007 (+2)
+Long  runs:         863 (+3)
+Long  runs:         901 (+4)
+Long  runs:         951 (+5)
+Long  runs:         882 (+6)
+Long  runs:         997 (+7)
+Long  runs:        1052 (+8)
+Long  runs:         824 (+9)
+Long  runs:         864 (+10)
+Long  runs:         885 (+11)
+Long  runs:         903 (+12)
+Long  runs:        1014 (+13)
+Long  runs:         808 (+14)
+Long  runs:         918 (+15)
+Long  runs:         914 (+16)
+Long  runs:         779 (+17)
+Long  runs:         889 (+18)
+Long  runs:         649 (+19)
+Long  runs:         547 (+20)
+Long  runs:        2207 (+21)
+Long  runs:       16573 (+22)
+Long  runs:        4678 (+23)
+Long  runs:      146793 (+24)
+Long  runs:       78801 (+25)
+Long  runs:        5180 (+26)
+Long  runs:          54 (+27)
+Long  runs:           3 (+28)
+Long  runs:           0 (+29)
+Long  runs:           0 (+30)
+Long  runs:           0 (+31)
+Long  runs:           0 (+32)
+Long  runs:           0 (+33)
+Long  runs:           0 (+34)
+Long  runs:           0 (+35)
+Long  runs:           6 (+36)
+Long  runs:          15 (+37)
+Long  runs:           6 (+38)
+Long  runs:         213 (+39)
+
  */

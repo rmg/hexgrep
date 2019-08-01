@@ -5,7 +5,7 @@ time: scan-c
 	diff -q c.txt prev.txt || diff c.txt prev.txt | wc -l
 
 scan-c: main.c
-	$(CC) -Werror -Wall -O3 -o $@ $<
+	$(CC) -Werror -Wall -O3 -DNDEBUG -o $@ $<
 
 scan-go: main.go
 	go build -o $@ $<
