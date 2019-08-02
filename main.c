@@ -11,12 +11,10 @@
 #define USE_HEX_TABLE 1
 
 #if DO_INST
-    #define STATIC
+    #define static
     #define INST(x) x
-    #define DO_DUMP
 #else
     #define INST(x)
-    #define STATIC static
 #endif
 
 #if DO_INST
@@ -37,22 +35,6 @@
 #define assert_not_hex(X)
 #define assert_hex(X)
 #define assert_hit(X)
-#endif
-
-#ifdef DO_DUMP
-STATIC void dump_buf(char *buf, size_t MAX, int_fast32_t i) {
-    dprintf(2, "buf [%d/%zu] [", i, MAX);
-    for (int_fast32_t o = -20; o < 20; o++) {
-        if (i + o > 0 && i + o < MAX) {
-            if (o) {
-                dprintf(2, " %x ", buf[i+o]);
-            } else {
-                dprintf(2, " <%x> ", buf[i+o]);
-            }
-        }
-    }
-    dprintf(2, "]\n");
-}
 #endif
 
 #if USE_HEX_TABLE
@@ -77,7 +59,7 @@ static const bool lhex[256] = {
 #endif
 
 // nobody write a git sha using uppercase hex, it's always lowercase
-STATIC bool is_lower_hex(const unsigned char * b) {
+static bool is_lower_hex(const unsigned char * b) {
     INST(cmp++);
 #if USE_HEX_TABLE
     return lhex[*b];
@@ -93,13 +75,13 @@ void __assert_hit(const unsigned char *buf) {
     assert_not_hex(buf+40);
 }
 
-STATIC void print_hit(const unsigned char *buf) {
+static void print_hit(const unsigned char *buf) {
     INST(hits++);
     assert_hit(buf);
     printf("%.40s\n", buf);
 }
 
-STATIC const unsigned char * scan_skip(const unsigned char *buf, const unsigned char *end) {
+static const unsigned char * scan_skip(const unsigned char *buf, const unsigned char *end) {
     assert_not_hex(buf);
 
     int_fast32_t skip = 40;
@@ -117,7 +99,7 @@ STATIC const unsigned char * scan_skip(const unsigned char *buf, const unsigned 
     return buf+1;
 }
 
-STATIC const unsigned char * find_start(const unsigned char *buf, const unsigned char *end) {
+static const unsigned char * find_start(const unsigned char *buf, const unsigned char *end) {
     assert_hex(buf);
     while (buf < end) {
         if (is_lower_hex(end-1)) {
@@ -131,10 +113,10 @@ STATIC const unsigned char * find_start(const unsigned char *buf, const unsigned
     return end;
 }
 
-STATIC const unsigned char * scan_hit_short(const unsigned char *buf, const unsigned char * end);
+static const unsigned char * scan_hit_short(const unsigned char *buf, const unsigned char * end);
 
 
-STATIC const unsigned char * scan_hit_long(const unsigned char *buf, const unsigned char *end) {
+static const unsigned char * scan_hit_long(const unsigned char *buf, const unsigned char *end) {
     assert_hex(buf);
 
     // special case.. if we don't have enough room left in the buffer, just return
@@ -175,7 +157,7 @@ STATIC const unsigned char * scan_hit_long(const unsigned char *buf, const unsig
     return scan_hit_short(start, end);
 }
 
-STATIC const unsigned char * scan_hit_short(const unsigned char *buf, const unsigned char * end) {
+static const unsigned char * scan_hit_short(const unsigned char *buf, const unsigned char * end) {
     assert_hex(buf);
 
 #define NEED_HEX(N) if (!is_lower_hex(buf+N)) { INST(short_runs++); INST(short_run[N]++); return scan_skip(buf+N, end); }
@@ -245,7 +227,7 @@ STATIC const unsigned char * scan_hit_short(const unsigned char *buf, const unsi
     return scan_hit_long(buf+40, end);
 }
 
-STATIC int_fast32_t scan_slice_fast(const unsigned char *buf, const unsigned char * end) {
+static int_fast32_t scan_slice_fast(const unsigned char *buf, const unsigned char * end) {
 #ifndef NDEBUG
     const unsigned char * prev;
 #endif
@@ -263,7 +245,7 @@ STATIC int_fast32_t scan_slice_fast(const unsigned char *buf, const unsigned cha
     return end-buf;
 }
 
-STATIC int_fast32_t scan_all_slow(const unsigned char *buf, const unsigned char * end) {
+static int_fast32_t scan_all_slow(const unsigned char *buf, const unsigned char * end) {
     int_fast32_t count = 0;
     while (buf < end) {
         if (is_lower_hex(buf)) {
@@ -283,7 +265,7 @@ STATIC int_fast32_t scan_all_slow(const unsigned char *buf, const unsigned char 
     return count;
 }
 
-STATIC const size_t MAX_BUF = 64*1024;
+static const size_t MAX_BUF = 64*1024;
 
 int main(int argc, const char *argv[]) {
     unsigned char buf[MAX_BUF];
