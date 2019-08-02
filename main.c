@@ -99,7 +99,7 @@ STATIC void print_hit(const char *buf) {
     printf("%.40s\n", buf);
 }
 
-STATIC int_fast32_t scan_skip(char *buf, size_t MAX, int_fast32_t i) {
+STATIC int_fast32_t scan_skip(const char *buf, const char *end, int_fast32_t i) {
     assert_not_hex(buf[i]);
 
     int_fast32_t skip = 40;
@@ -107,20 +107,20 @@ STATIC int_fast32_t scan_skip(char *buf, size_t MAX, int_fast32_t i) {
     int_fast32_t io = i;
 #endif
     do {
-        while (i + skip < MAX && !is_lower_hex(buf[i+skip])) {
+        while (buf + i + skip < end && !is_lower_hex(buf[i+skip])) {
             i += skip;
         }
         skip /= 2;
-    } while (skip > 1 && i + skip < MAX);
+    } while (skip > 1 && buf + i + skip < end);
     assert(io <= i);
-    if (i >= MAX) {
-        INST(dump_buf(buf, MAX, i));
+    if (buf + i >= end) {
+        INST(dump_buf(buf, end, i));
     }
-    assert(i < MAX);
+    assert(buf+i < end);
     return i+1;
 }
 
-STATIC int_fast32_t find_start(char *buf, size_t MAX, int_fast32_t MIN, int_fast32_t i) {
+STATIC int_fast32_t find_start(const char *buf, const char *end, int_fast32_t MIN, int_fast32_t i) {
     assert_hex(buf[i]);
     while (i > MIN) {
         if (is_lower_hex(buf[i-1])) {
@@ -134,14 +134,14 @@ STATIC int_fast32_t find_start(char *buf, size_t MAX, int_fast32_t MIN, int_fast
     return i;
 }
 
-STATIC int_fast32_t scan_hit_short(char *buf, size_t MAX, int_fast32_t i);
+STATIC int_fast32_t scan_hit_short(const char *buf, const char * end, int_fast32_t i);
 
 
-STATIC int_fast32_t scan_hit_long(char *buf, size_t MAX, int_fast32_t i) {
+STATIC int_fast32_t scan_hit_long(const char *buf, const char *end, int_fast32_t i) {
     assert_hex(buf[i]);
 
     // special case.. if we don't have enough room left in the buffer, just return
-    if (i+30 >= MAX) {
+    if (buf+i+30 >= end) {
         return i;
     }
 
@@ -158,34 +158,34 @@ STATIC int_fast32_t scan_hit_long(char *buf, size_t MAX, int_fast32_t i) {
     // at 50 we know that the current run ends before then and that any runs
     // between here and there are too short to care about.
 
-    assert(i+30 < MAX);
+    assert(buf + i+30 < end);
 
     if (!is_lower_hex(buf[i+30])) {
-        return scan_skip(buf, MAX, i+30);
+        return scan_skip(buf, end, i+30);
     }
 
     // if we saw a hex at i+30 it is most likely part of the next run and we
     // need to find where it starts.
 
-    int_fast32_t start = find_start(buf, MAX, i, i+30);
+    int_fast32_t start = find_start(buf, end, i, i+30);
     if (start == i) {
         // wow, it really was part of the current run!
-        return scan_hit_long(buf, MAX, i+30);
+        return scan_hit_long(buf, end, i+30);
     }
     assert_hex(buf[start]);
     assert_not_hex(buf[start-1]);
-    return scan_hit_short(buf, MAX, start);
+    return scan_hit_short(buf, end, start);
 }
 
-STATIC int_fast32_t scan_hit_short(char *buf, size_t MAX, int_fast32_t i) {
+STATIC int_fast32_t scan_hit_short(const char *buf, const char * end, int_fast32_t i) {
     assert_hex(buf[i]);
 
-#define NEED_HEX(N) if (!is_lower_hex(buf[i+N])) { INST(short_runs++); INST(short_run[N]++); return scan_skip(buf, MAX, i+N); }
+#define NEED_HEX(N) if (!is_lower_hex(buf[i+N])) { INST(short_runs++); INST(short_run[N]++); return scan_skip(buf, end, i+N); }
 
     // Can't possibly match, we don't have enough room left. Since we know we'll
     // scan these on the next pass it is better to return early instead of
     // scanning them twice.
-    if (i+40 >= MAX) {
+    if (buf + i+40 >= end) {
         return i;
     }
 
@@ -242,34 +242,34 @@ STATIC int_fast32_t scan_hit_short(char *buf, size_t MAX, int_fast32_t i) {
 
     if (!is_lower_hex(buf[i+40])) {
         print_hit(buf+i);
-        return scan_skip(buf, MAX, i+40);
+        return scan_skip(buf, end, i+40);
     }
-    return scan_hit_long(buf, MAX, i+40);
+    return scan_hit_long(buf, end, i+40);
 }
 
-STATIC int_fast32_t scan_slice_fast(char *buf, size_t MAX, int_fast32_t count) {
+STATIC int_fast32_t scan_slice_fast(const char *buf, const char * end, int_fast32_t count) {
     int_fast32_t i = 0, io = 0;
 
     do {
         io = i;
         if (is_lower_hex(buf[i])) {
-            i = scan_hit_short(buf, MAX, i);
+            i = scan_hit_short(buf, end, i);
             assert(i > io);
         } else {
-            i = scan_skip(buf, MAX, i);
+            i = scan_skip(buf, end, i);
             assert(i > io);
         }
-    } while (i < MAX - 41);
+    } while (buf+i < end - 41);
     if (count > 40) {
         count = 41;
     }
     i -= count;
-    return MAX-i;
+    return end-buf-i;
 }
 
-STATIC int_fast32_t scan_all_slow(char *buf, size_t MAX) {
+STATIC int_fast32_t scan_all_slow(const char *buf, const char * end) {
     int_fast32_t count = 0;
-    for (int_fast32_t i = 0; i < MAX; i++) {
+    for (int_fast32_t i = 0; buf+i < end; i++) {
         if (is_lower_hex(buf[i])) {
             count++;
             continue;
@@ -280,7 +280,7 @@ STATIC int_fast32_t scan_all_slow(char *buf, size_t MAX) {
         count = 0;
     }
     if (count == 40) {
-        print_hit(buf+MAX-count);
+        print_hit(end-count);
         count = 0;
     }
     return count;
@@ -288,7 +288,7 @@ STATIC int_fast32_t scan_all_slow(char *buf, size_t MAX) {
 
 STATIC const size_t MAX_BUF = 64*1024;
 
-int main(int argc, char *argv[]) {
+int main(int argc, const char *argv[]) {
     char buf[MAX_BUF];
     int_fast32_t remainder = 0;
     int_fast32_t count = 0;
@@ -307,14 +307,14 @@ int main(int argc, char *argv[]) {
             remainder = max_scan;
             continue;
         }
-        remainder = scan_slice_fast(buf, max_scan, count);
+        remainder = scan_slice_fast(buf, buf+max_scan, count);
         // INST(dprintf(2, "remainder:  %10d (%d)\n", remainder, hits));
         if (remainder) {
             memmove(buf, buf+max_scan-remainder, remainder);
         }
     }
     if (remainder >= 40) {
-        scan_all_slow(buf+max_scan-remainder, remainder);
+        scan_all_slow(buf+max_scan-remainder, buf+max_scan);
     }
     dprintf(2, "Bytes read:  %10zu\n", total_read);
 
