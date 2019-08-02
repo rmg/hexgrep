@@ -120,18 +120,19 @@ STATIC int_fast32_t scan_skip(const unsigned char *buf, const unsigned char *end
     return i+1;
 }
 
-STATIC int_fast32_t find_start(const unsigned char *buf, const unsigned char *end, int_fast32_t MIN, int_fast32_t i) {
-    assert_hex(buf+i);
-    while (i > MIN) {
-        if (is_lower_hex(buf+i-1)) {
-            i--;
+STATIC const unsigned char * find_start(const unsigned char *buf, const unsigned char *end) {
+    assert_hex(buf);
+    while (buf < end) {
+        if (is_lower_hex(end-1)) {
+            end--;
         } else {
+
             break;
         }
     }
-    assert(i >= MIN);
-    assert_hex(buf+i);
-    return i;
+    assert(end >= buf);
+    assert_hex(end);
+    return end;
 }
 
 STATIC int_fast32_t scan_hit_short(const unsigned char *buf, const unsigned char * end, int_fast32_t i);
@@ -167,14 +168,15 @@ STATIC int_fast32_t scan_hit_long(const unsigned char *buf, const unsigned char 
     // if we saw a hex at i+30 it is most likely part of the next run and we
     // need to find where it starts.
 
-    int_fast32_t start = find_start(buf, end, i, i+30);
-    if (start == i) {
+    const unsigned char * start = find_start(buf+i, buf+i+30);
+    if (start == buf+i) {
         // wow, it really was part of the current run!
         return scan_hit_long(buf, end, i+30);
     }
-    assert_hex(buf+start);
-    assert_not_hex(buf+start-1);
-    return scan_hit_short(buf, end, start);
+    i = start - buf;
+    assert_hex(buf+i);
+    assert_not_hex(buf+i-1);
+    return scan_hit_short(buf, end, i);
 }
 
 STATIC int_fast32_t scan_hit_short(const unsigned char *buf, const unsigned char * end, int_fast32_t i) {
