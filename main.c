@@ -99,25 +99,22 @@ STATIC void print_hit(const unsigned char *buf) {
     printf("%.40s\n", buf);
 }
 
-STATIC int_fast32_t scan_skip(const unsigned char *buf, const unsigned char *end, int_fast32_t i) {
-    assert_not_hex(buf+i);
+STATIC const unsigned char * scan_skip(const unsigned char *buf, const unsigned char *end) {
+    assert_not_hex(buf);
 
     int_fast32_t skip = 40;
 #ifndef NDEBUG
-    int_fast32_t io = i;
+    const unsigned char * io = buf;
 #endif
     do {
-        while (buf + i + skip < end && !is_lower_hex(buf+i+skip)) {
-            i += skip;
+        while (buf + skip < end && !is_lower_hex(buf+skip)) {
+            buf += skip;
         }
         skip /= 2;
-    } while (skip > 1 && buf + i + skip < end);
-    assert(io <= i);
-    if (buf + i >= end) {
-        INST(dump_buf(buf, end, i));
-    }
-    assert(buf+i < end);
-    return i+1;
+    } while (skip > 1 && buf + skip < end);
+    assert(io <= buf);
+    assert(buf < end);
+    return buf+1;
 }
 
 STATIC const unsigned char * find_start(const unsigned char *buf, const unsigned char *end) {
@@ -126,7 +123,6 @@ STATIC const unsigned char * find_start(const unsigned char *buf, const unsigned
         if (is_lower_hex(end-1)) {
             end--;
         } else {
-
             break;
         }
     }
@@ -135,15 +131,15 @@ STATIC const unsigned char * find_start(const unsigned char *buf, const unsigned
     return end;
 }
 
-STATIC int_fast32_t scan_hit_short(const unsigned char *buf, const unsigned char * end, int_fast32_t i);
+STATIC const unsigned char * scan_hit_short(const unsigned char *buf, const unsigned char * end);
 
 
-STATIC int_fast32_t scan_hit_long(const unsigned char *buf, const unsigned char *end, int_fast32_t i) {
-    assert_hex(buf+i);
+STATIC const unsigned char * scan_hit_long(const unsigned char *buf, const unsigned char *end) {
+    assert_hex(buf);
 
     // special case.. if we don't have enough room left in the buffer, just return
-    if (buf+i+30 >= end) {
-        return i;
+    if (buf+30 >= end) {
+        return buf;
     }
 
     // given we are at 41 in length already, then we know the closest the next
@@ -159,36 +155,36 @@ STATIC int_fast32_t scan_hit_long(const unsigned char *buf, const unsigned char 
     // at 50 we know that the current run ends before then and that any runs
     // between here and there are too short to care about.
 
-    assert(buf + i+30 < end);
+    assert(buf +30 < end);
 
-    if (!is_lower_hex(buf+i+30)) {
-        return scan_skip(buf, end, i+30);
+    if (!is_lower_hex(buf+30)) {
+        return scan_skip(buf+30, end);
     }
 
     // if we saw a hex at i+30 it is most likely part of the next run and we
     // need to find where it starts.
 
-    const unsigned char * start = find_start(buf+i, buf+i+30);
-    if (start == buf+i) {
+    const unsigned char * start = find_start(buf, buf+30);
+    if (start == buf) {
         // wow, it really was part of the current run!
-        return scan_hit_long(buf, end, i+30);
+        return scan_hit_long(buf+30, end);
     }
-    i = start - buf;
-    assert_hex(buf+i);
-    assert_not_hex(buf+i-1);
-    return scan_hit_short(buf, end, i);
+    // i = start - buf;
+    assert_hex(start);
+    assert_not_hex(start-1);
+    return scan_hit_short(start, end);
 }
 
-STATIC int_fast32_t scan_hit_short(const unsigned char *buf, const unsigned char * end, int_fast32_t i) {
-    assert_hex(buf+i);
+STATIC const unsigned char * scan_hit_short(const unsigned char *buf, const unsigned char * end) {
+    assert_hex(buf);
 
-#define NEED_HEX(N) if (!is_lower_hex(buf+i+N)) { INST(short_runs++); INST(short_run[N]++); return scan_skip(buf, end, i+N); }
+#define NEED_HEX(N) if (!is_lower_hex(buf+N)) { INST(short_runs++); INST(short_run[N]++); return scan_skip(buf+N, end); }
 
     // Can't possibly match, we don't have enough room left. Since we know we'll
     // scan these on the next pass it is better to return early instead of
     // scanning them twice.
-    if (buf + i+40 >= end) {
-        return i;
+    if (buf + 40 >= end) {
+        return buf;
     }
 
     // Unrolled checking the next 40 bytes (must be terminated). We know the
@@ -242,43 +238,46 @@ STATIC int_fast32_t scan_hit_short(const unsigned char *buf, const unsigned char
     NEED_HEX(38);
     NEED_HEX(39);
 
-    if (!is_lower_hex(buf+i+40)) {
-        print_hit(buf+i);
-        return scan_skip(buf, end, i+40);
+    if (!is_lower_hex(buf+40)) {
+        print_hit(buf);
+        return scan_skip(buf+40, end);
     }
-    return scan_hit_long(buf, end, i+40);
+    return scan_hit_long(buf+40, end);
 }
 
 STATIC int_fast32_t scan_slice_fast(const unsigned char *buf, const unsigned char * end) {
-    int_fast32_t i = 0, io = 0;
+#ifndef NDEBUG
+    const unsigned char * prev;
+#endif
 
     do {
-        io = i;
-        if (is_lower_hex(buf+i)) {
-            i = scan_hit_short(buf, end, i);
-            assert(i > io);
+        assert(prev = buf);
+        if (is_lower_hex(buf)) {
+            buf = scan_hit_short(buf, end);
+            assert(buf > prev);
         } else {
-            i = scan_skip(buf, end, i);
-            assert(i > io);
+            buf = scan_skip(buf, end);
+            assert(buf > prev);
         }
-    } while (buf+i < end - 41);
-    return end-buf-i;
+    } while (buf < end - 41);
+    return end-buf;
 }
 
 STATIC int_fast32_t scan_all_slow(const unsigned char *buf, const unsigned char * end) {
     int_fast32_t count = 0;
-    for (int_fast32_t i = 0; buf+i < end; i++) {
-        if (is_lower_hex(buf+i)) {
+    while (buf < end) {
+        if (is_lower_hex(buf)) {
             count++;
+            buf++;
             continue;
         }
         if (count == 40) {
-            print_hit(buf+i-count);
+            print_hit(buf-count);
         }
         count = 0;
     }
     if (count == 40) {
-        print_hit(end-count);
+        print_hit(buf-count);
         count = 0;
     }
     return count;
