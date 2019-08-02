@@ -30,8 +30,8 @@
 #endif
 
 #ifndef NDEBUG
-#define assert_not_hex(X) assert(!lhex[(unsigned char)X]);
-#define assert_hex(X) assert(lhex[(unsigned char)X]);
+#define assert_not_hex(X) assert(!lhex[*(X)]);
+#define assert_hex(X) assert(lhex[*(X)]);
 #define assert_hit(X) __assert_hit((X));
 #else
 #define assert_not_hex(X)
@@ -77,37 +77,37 @@ static const bool lhex[256] = {
 #endif
 
 // nobody write a git sha using uppercase hex, it's always lowercase
-STATIC bool is_lower_hex(unsigned char b) {
+STATIC bool is_lower_hex(const unsigned char * b) {
     INST(cmp++);
 #if USE_HEX_TABLE
-    return lhex[b];
+    return lhex[*b];
 #else
     return (b >= '0' && b <= '9') || (b >= 'a' && b <= 'f');
 #endif
 }
 
-void __assert_hit(const char *buf) {
+void __assert_hit(const unsigned char *buf) {
     for (int i = 0; i < 40; i++) {
-        assert_hex(buf[i]);
+        assert_hex(buf+i);
     }
-    assert_not_hex(buf[40]);
+    assert_not_hex(buf+40);
 }
 
-STATIC void print_hit(const char *buf) {
+STATIC void print_hit(const unsigned char *buf) {
     INST(hits++);
     assert_hit(buf);
     printf("%.40s\n", buf);
 }
 
-STATIC int_fast32_t scan_skip(const char *buf, const char *end, int_fast32_t i) {
-    assert_not_hex(buf[i]);
+STATIC int_fast32_t scan_skip(const unsigned char *buf, const unsigned char *end, int_fast32_t i) {
+    assert_not_hex(buf+i);
 
     int_fast32_t skip = 40;
 #ifndef NDEBUG
     int_fast32_t io = i;
 #endif
     do {
-        while (buf + i + skip < end && !is_lower_hex(buf[i+skip])) {
+        while (buf + i + skip < end && !is_lower_hex(buf+i+skip)) {
             i += skip;
         }
         skip /= 2;
@@ -120,25 +120,25 @@ STATIC int_fast32_t scan_skip(const char *buf, const char *end, int_fast32_t i) 
     return i+1;
 }
 
-STATIC int_fast32_t find_start(const char *buf, const char *end, int_fast32_t MIN, int_fast32_t i) {
-    assert_hex(buf[i]);
+STATIC int_fast32_t find_start(const unsigned char *buf, const unsigned char *end, int_fast32_t MIN, int_fast32_t i) {
+    assert_hex(buf+i);
     while (i > MIN) {
-        if (is_lower_hex(buf[i-1])) {
+        if (is_lower_hex(buf+i-1)) {
             i--;
         } else {
             break;
         }
     }
     assert(i >= MIN);
-    assert_hex(buf[i]);
+    assert_hex(buf+i);
     return i;
 }
 
-STATIC int_fast32_t scan_hit_short(const char *buf, const char * end, int_fast32_t i);
+STATIC int_fast32_t scan_hit_short(const unsigned char *buf, const unsigned char * end, int_fast32_t i);
 
 
-STATIC int_fast32_t scan_hit_long(const char *buf, const char *end, int_fast32_t i) {
-    assert_hex(buf[i]);
+STATIC int_fast32_t scan_hit_long(const unsigned char *buf, const unsigned char *end, int_fast32_t i) {
+    assert_hex(buf+i);
 
     // special case.. if we don't have enough room left in the buffer, just return
     if (buf+i+30 >= end) {
@@ -160,7 +160,7 @@ STATIC int_fast32_t scan_hit_long(const char *buf, const char *end, int_fast32_t
 
     assert(buf + i+30 < end);
 
-    if (!is_lower_hex(buf[i+30])) {
+    if (!is_lower_hex(buf+i+30)) {
         return scan_skip(buf, end, i+30);
     }
 
@@ -172,15 +172,15 @@ STATIC int_fast32_t scan_hit_long(const char *buf, const char *end, int_fast32_t
         // wow, it really was part of the current run!
         return scan_hit_long(buf, end, i+30);
     }
-    assert_hex(buf[start]);
-    assert_not_hex(buf[start-1]);
+    assert_hex(buf+start);
+    assert_not_hex(buf+start-1);
     return scan_hit_short(buf, end, start);
 }
 
-STATIC int_fast32_t scan_hit_short(const char *buf, const char * end, int_fast32_t i) {
-    assert_hex(buf[i]);
+STATIC int_fast32_t scan_hit_short(const unsigned char *buf, const unsigned char * end, int_fast32_t i) {
+    assert_hex(buf+i);
 
-#define NEED_HEX(N) if (!is_lower_hex(buf[i+N])) { INST(short_runs++); INST(short_run[N]++); return scan_skip(buf, end, i+N); }
+#define NEED_HEX(N) if (!is_lower_hex(buf+i+N)) { INST(short_runs++); INST(short_run[N]++); return scan_skip(buf, end, i+N); }
 
     // Can't possibly match, we don't have enough room left. Since we know we'll
     // scan these on the next pass it is better to return early instead of
@@ -240,19 +240,19 @@ STATIC int_fast32_t scan_hit_short(const char *buf, const char * end, int_fast32
     NEED_HEX(38);
     NEED_HEX(39);
 
-    if (!is_lower_hex(buf[i+40])) {
+    if (!is_lower_hex(buf+i+40)) {
         print_hit(buf+i);
         return scan_skip(buf, end, i+40);
     }
     return scan_hit_long(buf, end, i+40);
 }
 
-STATIC int_fast32_t scan_slice_fast(const char *buf, const char * end, int_fast32_t count) {
+STATIC int_fast32_t scan_slice_fast(const unsigned char *buf, const unsigned char * end, int_fast32_t count) {
     int_fast32_t i = 0, io = 0;
 
     do {
         io = i;
-        if (is_lower_hex(buf[i])) {
+        if (is_lower_hex(buf+i)) {
             i = scan_hit_short(buf, end, i);
             assert(i > io);
         } else {
@@ -267,10 +267,10 @@ STATIC int_fast32_t scan_slice_fast(const char *buf, const char * end, int_fast3
     return end-buf-i;
 }
 
-STATIC int_fast32_t scan_all_slow(const char *buf, const char * end) {
+STATIC int_fast32_t scan_all_slow(const unsigned char *buf, const unsigned char * end) {
     int_fast32_t count = 0;
     for (int_fast32_t i = 0; buf+i < end; i++) {
-        if (is_lower_hex(buf[i])) {
+        if (is_lower_hex(buf+i)) {
             count++;
             continue;
         }
@@ -289,7 +289,7 @@ STATIC int_fast32_t scan_all_slow(const char *buf, const char * end) {
 STATIC const size_t MAX_BUF = 64*1024;
 
 int main(int argc, const char *argv[]) {
-    char buf[MAX_BUF];
+    unsigned char buf[MAX_BUF];
     int_fast32_t remainder = 0;
     int_fast32_t count = 0;
     size_t total_read = 0;
