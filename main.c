@@ -249,7 +249,7 @@ STATIC int_fast32_t scan_hit_short(const unsigned char *buf, const unsigned char
     return scan_hit_long(buf, end, i+40);
 }
 
-STATIC int_fast32_t scan_slice_fast(const unsigned char *buf, const unsigned char * end, int_fast32_t count) {
+STATIC int_fast32_t scan_slice_fast(const unsigned char *buf, const unsigned char * end) {
     int_fast32_t i = 0, io = 0;
 
     do {
@@ -262,10 +262,6 @@ STATIC int_fast32_t scan_slice_fast(const unsigned char *buf, const unsigned cha
             assert(i > io);
         }
     } while (buf+i < end - 41);
-    if (count > 40) {
-        count = 41;
-    }
-    i -= count;
     return end-buf-i;
 }
 
@@ -293,7 +289,6 @@ STATIC const size_t MAX_BUF = 64*1024;
 int main(int argc, const char *argv[]) {
     unsigned char buf[MAX_BUF];
     int_fast32_t remainder = 0;
-    int_fast32_t count = 0;
     size_t total_read = 0;
     ssize_t nread = 0;
     int_fast32_t max_scan = 0;
@@ -309,7 +304,7 @@ int main(int argc, const char *argv[]) {
             remainder = max_scan;
             continue;
         }
-        remainder = scan_slice_fast(buf, buf+max_scan, count);
+        remainder = scan_slice_fast(buf, buf+max_scan);
         // INST(dprintf(2, "remainder:  %10d (%d)\n", remainder, hits));
         if (remainder) {
             memmove(buf, buf+max_scan-remainder, remainder);
