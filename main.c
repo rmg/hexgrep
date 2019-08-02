@@ -19,22 +19,24 @@
     #define STATIC static
 #endif
 
-
-INST(
+#if DO_INST
     static int_fast32_t cmp = 0;
-    static uint_fast32_t hits = 0;
-    static uint_fast32_t short_runs = 0;
-    static uint_fast32_t long_runs = 0;
-    static uint_fast32_t short_run[41] = {0};
-    static uint_fast32_t long_run[40] = {0};
-)
+    static int_fast32_t hits = 0;
+    static int_fast32_t short_runs = 0;
+    static int_fast32_t long_runs = 0;
+    static int_fast32_t short_run[41] = {0};
+    static int_fast32_t long_run[41] = {0};
+    static int_fast32_t skips[128] = {0};
+#endif
 
 #ifndef NDEBUG
 #define assert_not_hex(X) assert(!lhex[(unsigned char)X]);
 #define assert_hex(X) assert(lhex[(unsigned char)X]);
+#define assert_hit(X) __assert_hit((X));
 #else
 #define assert_not_hex(X)
 #define assert_hex(X)
+#define assert_hit(X)
 #endif
 
 #ifdef DO_DUMP
@@ -52,12 +54,6 @@ STATIC void dump_buf(char *buf, size_t MAX, int_fast32_t i) {
     dprintf(2, "]\n");
 }
 #endif
-
-STATIC void print_hit(char *buf) {
-    INST(hits++);
-    printf("%.40s\n", buf);
-}
-
 
 #if USE_HEX_TABLE
 static const bool lhex[256] = {
@@ -88,6 +84,19 @@ STATIC bool is_lower_hex(unsigned char b) {
 #else
     return (b >= '0' && b <= '9') || (b >= 'a' && b <= 'f');
 #endif
+}
+
+void __assert_hit(const char *buf) {
+    for (int i = 0; i < 40; i++) {
+        assert_hex(buf[i]);
+    }
+    assert_not_hex(buf[40]);
+}
+
+STATIC void print_hit(const char *buf) {
+    INST(hits++);
+    assert_hit(buf);
+    printf("%.40s\n", buf);
 }
 
 STATIC int_fast32_t scan_skip(char *buf, size_t MAX, int_fast32_t i) {
