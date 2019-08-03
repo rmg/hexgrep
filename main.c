@@ -37,6 +37,9 @@
 #define assert_hit(X)
 #endif
 
+# define likely(x) __builtin_expect((x), 1)
+# define unlikely(x) __builtin_expect((x), 0)
+
 #if USE_HEX_TABLE
 static const bool lhex[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -120,7 +123,7 @@ static const unsigned char * scan_hit_long(const unsigned char *buf, const unsig
     assert_hex(buf);
 
     // special case.. if we don't have enough room left in the buffer, just return
-    if (buf+30 >= end) {
+    if (unlikely(buf+30 >= end)) {
         return buf;
     }
 
@@ -151,7 +154,6 @@ static const unsigned char * scan_hit_long(const unsigned char *buf, const unsig
         // wow, it really was part of the current run!
         return scan_hit_long(buf+30, end);
     }
-    // i = start - buf;
     assert_hex(start);
     assert_not_hex(start-1);
     return scan_hit_short(start, end);
@@ -165,7 +167,7 @@ static const unsigned char * scan_hit_short(const unsigned char *buf, const unsi
     // Can't possibly match, we don't have enough room left. Since we know we'll
     // scan these on the next pass it is better to return early instead of
     // scanning them twice.
-    if (buf + 40 >= end) {
+    if (unlikely(buf + 40 >= end)) {
         return buf;
     }
 
@@ -220,7 +222,7 @@ static const unsigned char * scan_hit_short(const unsigned char *buf, const unsi
     NEED_HEX(38);
     NEED_HEX(39);
 
-    if (!is_lower_hex(buf+40)) {
+    if (unlikely(!is_lower_hex(buf+40))) {
         print_hit(buf);
         return scan_skip(buf+40, end);
     }
@@ -287,7 +289,7 @@ int main(int argc, const char *argv[]) {
         }
         remainder = scan_slice_fast(buf, buf+max_scan);
         // INST(dprintf(2, "remainder:  %10d (%d)\n", remainder, hits));
-        if (remainder) {
+        if (likely(remainder)) {
             memmove(buf, buf+max_scan-remainder, remainder);
         }
     }
