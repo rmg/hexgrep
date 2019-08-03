@@ -100,6 +100,7 @@ static const unsigned char * scan_skip(const unsigned char *buf, const unsigned 
     do {
         while (buf + skip < end && !is_lower_hex(buf+skip)) {
             buf += skip;
+            skip = 40;
         }
         skip /= 2;
     } while (skip > 1 && buf + skip < end);
