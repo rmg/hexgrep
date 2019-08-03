@@ -67,7 +67,7 @@ static bool is_lower_hex(const unsigned char * b) {
 #if USE_HEX_TABLE
     return lhex[*b];
 #else
-    return (b >= '0' && b <= '9') || (b >= 'a' && b <= 'f');
+    return (*b >= '0' && *b <= '9') || (*b >= 'a' && *b <= 'f');
 #endif
 }
 
