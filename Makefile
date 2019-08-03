@@ -1,9 +1,10 @@
 all: c.txt go.txt rs.txt grep.txt ripgrep.txt js.txt
 
 SAMPLE ?= raw.tar
-CFLAGS := -march=native -fvectorize -Werror -Wall
+CFLAGS :=  -Werror -Wall -march=native -fvectorize
 FAST_CFLAGS := $(CFLAGS) -O3 -DNDEBUG
 DEBUG_CFLAGS := $(CFLAGS) -g
+SIMD_CFLAGS := $(CFLAGS) -DUSE_SIMD=1
 
 scan-c: main.c
 	$(CC) $(CFLAGS) -o $@ $<
@@ -11,8 +12,18 @@ scan-c: main.c
 scan-c-fast: main.c
 	$(CC) $(CFLAGS) -O3 -DNDEBUG -o $@ $<
 
+scan-c-fast-simd: main.c
+	$(CC) $(SIMD_CFLAGS) -O3 -DNDEBUG -o $@ $<
+
 scan-c-debug: main.c
 	$(CC) $(CFLAGS) -g -o $@ $<
+
+main.s: main.c
+	$(CC) $(CFLAGS) -O3 -S -mllvm --x86-asm-syntax=intel -o $@ $<
+
+time-simd: scan-c-fast-simd
+	time ./scan-c-fast-simd < raw.tar > c.txt
+	diff -q c.txt prev.txt || diff c.txt prev.txt | wc -l
 
 time: scan-c-fast
 	time ./scan-c-fast < raw.tar > c.txt
