@@ -7,7 +7,10 @@
 #include <stdint.h>
 #include <assert.h>
 
-#define DO_INST 0
+#ifndef DO_INST
+    #define DO_INST 0
+#endif
+
 #define USE_HEX_TABLE 1
 
 #if DO_INST
@@ -18,6 +21,7 @@
 #endif
 
 #if DO_INST
+#define arr_len(x) (sizeof(x)/sizeof((x)[0]))
     static int_fast32_t cmp = 0;
     static int_fast32_t hits = 0;
     static int_fast32_t short_runs = 0;
@@ -25,6 +29,7 @@
     static int_fast32_t short_run[41] = {0};
     static int_fast32_t long_run[41] = {0};
     static int_fast32_t skips[128] = {0};
+    static int_fast32_t remainders[64] = {0};
 #endif
 
 #ifndef NDEBUG
@@ -252,11 +257,14 @@ static int_fast32_t scan_slice_fast(const unsigned char *buf, const unsigned cha
         if (is_lower_hex(buf)) {
             buf = scan_hit_short(buf, end);
             assert(buf > prev);
+            assert(buf <= end);
         } else {
             buf = scan_skip(buf, end);
             assert(buf > prev);
+            assert(buf <= end);
         }
     } while (buf < end - 41);
+    assert(buf <= end);
     return end-buf;
 }
 
@@ -290,6 +298,7 @@ int main(int argc, const char *argv[]) {
     int_fast32_t remainder = 0;
     size_t total_read = 0;
     ssize_t nread = 0;
+    int_fast32_t scans = 0;
     int_fast32_t max_scan = 0;
     int fd = 0;
     if (argc > 1) {
@@ -304,28 +313,33 @@ int main(int argc, const char *argv[]) {
             continue;
         }
         remainder = scan_slice_fast(buf, buf+max_scan);
-        // INST(dprintf(2, "remainder:  %10d (%d)\n", remainder, hits));
         if (likely(remainder)) {
-            memmove(buf, buf+max_scan-remainder, remainder);
+            memcpy(buf, buf+max_scan-remainder, remainder);
         }
+        scans++;
+        INST(remainders[remainder]++);
     }
     if (remainder >= 40) {
         scan_all_slow(buf+max_scan-remainder, buf+max_scan);
     }
-    dprintf(2, "Bytes read:  %10zu\n", total_read);
+    dprintf(2, "Bytes read:  %10zu (blocks: %d)\n", total_read, scans);
 
 #if DO_INST
     // 115209474/1033491456 are the results from a sample file
     dprintf(2, "Comparisons: %10d (%d)\n", cmp, cmp-115209474);
+    dprintf(2, "Remainders copied to next run:\n");
+    for (int i = 0; i < arr_len(remainders); i++)
+        if (remainders[i])
+            dprintf(2, "Remainder: %2d: %10d\n", i, remainders[i]);
     dprintf(2, "Short runs:  %10d\n", short_runs);
-    for (int i = 1; i < 40; i++) {
-        dprintf(2, "Short runs:  %10d (%d)\n", short_run[i], i);
-    }
+    for (int i = 1; i < arr_len(short_run); i++)
+        if (short_run[i])
+            dprintf(2, "Short runs:  %10d (%d)\n", short_run[i], i);
     dprintf(2, "Exact runs:  %10d\n", hits);
     dprintf(2, "Long runs:   %10d\n", long_runs);
-    for (int i = 1; i < 40; i++) {
-        dprintf(2, "Long  runs:  %10d (+%d)\n", long_run[i], i);
-    }
+    for (int i = 1; i < arr_len(long_run); i++)
+        if (long_run[i])
+            dprintf(2, "Long  runs:  %10d (+%d)\n", long_run[i], i);
 #endif
 
     return nread;

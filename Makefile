@@ -15,6 +15,9 @@ scan-c-fast: main.c
 scan-c-fast-simd: main.c
 	$(CC) $(SIMD_CFLAGS) -O3 -DNDEBUG -o $@ $<
 
+scan-c-counters: main.c
+	$(CC) $(SIMD_CFLAGS) -O3 -DDO_INST=1 -o $@ $<
+
 scan-c-debug: main.c
 	$(CC) $(CFLAGS) -g -o $@ $<
 
@@ -27,6 +30,10 @@ time-simd: scan-c-fast-simd
 
 time: scan-c-fast
 	time ./scan-c-fast < raw.tar > c.txt
+	diff -q c.txt prev.txt || diff c.txt prev.txt | wc -l
+
+counts: scan-c-counters
+	time ./scan-c-counters < raw.tar > c.txt
 	diff -q c.txt prev.txt || diff c.txt prev.txt | wc -l
 
 test: scan-c-debug
