@@ -24,10 +24,7 @@
 #define arr_len(x) (sizeof(x)/sizeof((x)[0]))
     static int_fast32_t cmp = 0;
     static int_fast32_t hits = 0;
-    static int_fast32_t short_runs = 0;
-    static int_fast32_t long_runs = 0;
-    static int_fast32_t short_run[41] = {0};
-    static int_fast32_t long_run[41] = {0};
+    static int_fast32_t runlens[4096] = {0};
     static int_fast32_t skips[128] = {0};
     static int_fast32_t remainders[64] = {0};
 #endif
@@ -127,6 +124,18 @@ static const unsigned char * find_start(const unsigned char *buf, const unsigned
     return end;
 }
 
+#if DO_INST
+static const int runlen(const unsigned char *start, const unsigned char *end) {
+    int len = 0;
+    // use lhex lookup directly here so we don't double count
+    while (len < arr_len(runlens) && start < end && lhex[*start]) {
+        len++;
+        start++;
+    }
+    return len;
+}
+#endif
+
 static const unsigned char * scan_hit_short(const unsigned char *buf, const unsigned char * end);
 
 // We're currently at a hex character that is part of a 41+ character run. We
@@ -134,7 +143,10 @@ static const unsigned char * scan_hit_short(const unsigned char *buf, const unsi
 // path as efficiently as possible.
 static const unsigned char * scan_hit_long(const unsigned char *buf, const unsigned char *end) {
     assert_hex(buf);
+    assert_hex(buf-40);
+    assert_not_hex(buf-41);
 
+    INST(runlens[runlen(buf-40, end)]++);
     // special case.. if we don't have enough room left in the buffer, just return
     if (unlikely(buf+30 >= end)) {
         return buf;
@@ -178,7 +190,7 @@ static const unsigned char * scan_hit_long(const unsigned char *buf, const unsig
 static const unsigned char * scan_hit_short(const unsigned char *buf, const unsigned char * end) {
     assert_hex(buf);
 
-#define NEED_HEX(N) if (!is_lower_hex(buf+N)) { INST(short_runs++); INST(short_run[N]++); return scan_skip(buf+N, end); }
+#define NEED_HEX(N) if (!is_lower_hex(buf+N)) { INST(runlens[runlen(buf, end)]++); return scan_skip(buf+N, end); }
 
     // Can't possibly match, we don't have enough room left. Since we know we'll
     // scan these on the next pass it is better to return early instead of
@@ -331,15 +343,10 @@ int main(int argc, const char *argv[]) {
     for (int i = 0; i < arr_len(remainders); i++)
         if (remainders[i])
             dprintf(2, "Remainder: %2d: %10d\n", i, remainders[i]);
-    dprintf(2, "Short runs:  %10d\n", short_runs);
-    for (int i = 1; i < arr_len(short_run); i++)
-        if (short_run[i])
-            dprintf(2, "Short runs:  %10d (%d)\n", short_run[i], i);
-    dprintf(2, "Exact runs:  %10d\n", hits);
-    dprintf(2, "Long runs:   %10d\n", long_runs);
-    for (int i = 1; i < arr_len(long_run); i++)
-        if (long_run[i])
-            dprintf(2, "Long  runs:  %10d (+%d)\n", long_run[i], i);
+    dprintf(2, "Hex string counts by length:\n");
+    for (int i = 0; i < arr_len(runlens); i++)
+        if (runlens[i])
+            dprintf(2, " [%4d]  %10d%s\n", i, runlens[i], i==40 ? " *" : "");
 #endif
 
     return nread;
