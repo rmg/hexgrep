@@ -78,15 +78,19 @@ void __assert_hit(const unsigned char *buf) {
     assert_not_hex(buf+40);
 }
 
+// We have a confirmed hit, we just need to print it to stdout, terminating with
+// a newline. We don't need to worry about length checking because valid memory
+// is implied.
 static void print_hit(const unsigned char *buf) {
     INST(hits++);
     assert_hit(buf);
     printf("%.40s\n", buf);
 }
 
+// At the start of this function, buf is pointing at a non-hex character and the
+// goal is to find the next hex character.
 static const unsigned char * scan_skip(const unsigned char *buf, const unsigned char *end) {
     assert_not_hex(buf);
-
     int_fast32_t skip = 40;
 #ifndef NDEBUG
     const unsigned char * io = buf;
@@ -102,6 +106,8 @@ static const unsigned char * scan_skip(const unsigned char *buf, const unsigned 
     return buf+1;
 }
 
+// We've jumped to a hex character via a large jump and we need to backtrack to
+// find the start of the run the current character is pointing at.
 static const unsigned char * find_start(const unsigned char *buf, const unsigned char *end) {
     assert_hex(buf);
     while (buf < end) {
@@ -118,7 +124,9 @@ static const unsigned char * find_start(const unsigned char *buf, const unsigned
 
 static const unsigned char * scan_hit_short(const unsigned char *buf, const unsigned char * end);
 
-
+// We're currently at a hex character that is part of a 41+ character run. We
+// want to get to the end of it and switch to the regular non-hex skipping code
+// path as efficiently as possible.
 static const unsigned char * scan_hit_long(const unsigned char *buf, const unsigned char *end) {
     assert_hex(buf);
 
@@ -159,6 +167,9 @@ static const unsigned char * scan_hit_long(const unsigned char *buf, const unsig
     return scan_hit_short(start, end);
 }
 
+// We are at the first hex character. The goal is to determine as efficiently as
+// possible if this is a 40 hex character run terminated by a non-hex, something
+// shorter, or something longer.
 static const unsigned char * scan_hit_short(const unsigned char *buf, const unsigned char * end) {
     assert_hex(buf);
 
@@ -229,6 +240,8 @@ static const unsigned char * scan_hit_short(const unsigned char *buf, const unsi
     return scan_hit_long(buf+40, end);
 }
 
+// Start point and main loop of optimized buffer scan. The range must be long
+// enough to accommodate aggressive skips.
 static int_fast32_t scan_slice_fast(const unsigned char *buf, const unsigned char * end) {
 #ifndef NDEBUG
     const unsigned char * prev;
@@ -247,6 +260,9 @@ static int_fast32_t scan_slice_fast(const unsigned char *buf, const unsigned cha
     return end-buf;
 }
 
+// Start point and main loop for unoptimized buffer scan. The algorithm here
+// performs no aggressive skipping because it is only intended to be used when
+// the buffer is short enough that we can't do any fancy skip tricks.
 static int_fast32_t scan_all_slow(const unsigned char *buf, const unsigned char * end) {
     int_fast32_t count = 0;
     while (buf < end) {
