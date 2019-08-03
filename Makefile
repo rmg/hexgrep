@@ -22,7 +22,7 @@ scan-c-debug: main.c
 	$(CC) $(CFLAGS) -g -o $@ $<
 
 main.s: main.c
-	$(CC) $(CFLAGS) -O3 -S -mllvm --x86-asm-syntax=intel -o $@ $<
+	$(CC) $(CFLAGS) -O3 -DNDEBUG -S -mllvm --x86-asm-syntax=intel -o $@ $<
 
 time-simd: scan-c-fast-simd
 	time ./scan-c-fast-simd < raw.tar > c.txt
