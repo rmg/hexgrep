@@ -176,8 +176,13 @@ static const unsigned char * scan_hit_long(const unsigned char *buf, const unsig
 
     const unsigned char * start = find_start(buf, buf+30);
     if (start == buf) {
-        // wow, it really was part of the current run!
-        return scan_hit_long(buf+30, end);
+        // we have found a run of 70+ hex characters.. these are rare.
+        // It is more efficient overall to resort to a byte-by-byte scan to find the end of it.
+        buf += 30;
+        while (buf < end && is_lower_hex(buf)) {
+            buf++;
+        }
+        return buf;
     }
     assert_hex(start);
     assert_not_hex(start-1);
