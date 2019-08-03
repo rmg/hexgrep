@@ -343,8 +343,8 @@ int main(int argc, const char *argv[]) {
     dprintf(2, "Bytes read:  %10zu (blocks: %d)\n", total_read, scans);
 
 #if DO_INST
-    // 115209474/1033491456 are the results from a sample file
-    dprintf(2, "Comparisons: %10d (%d)\n", cmp, cmp-115209474);
+    // 63907898/1033491456 are the results from a sample file
+    dprintf(2, "Comparisons: %10d (%d)\n", cmp, cmp-63907898);
     dprintf(2, "Remainders copied to next run:\n");
     for (int i = 0; i < arr_len(remainders); i++)
         if (remainders[i])
@@ -358,94 +358,139 @@ int main(int argc, const char *argv[]) {
     return nread;
 }
 
-
-
 /*
-Bytes read:  1033491456
-Comparisons:  134030479 (0)
-
-Short runs:     3763173
-Short runs:      611334 (2)
-Short runs:      181262 (32)
-Short runs:      137846 (3)
-Short runs:      133480 (5)
-Short runs:      104525 (31)
-Short runs:      101972 (4)
-Short runs:       45380 (6)
-Short runs:       36667 (7)
-Short runs:       25538 (30)
-Short runs:       11223 (8)
-Short runs:       10240 (39)
-Short runs:        7884 (33)
-Short runs:        5501 (38)
-Short runs:        4668 (29)
-Short runs:        3288 (10)
-Short runs:        2720 (26)
-Short runs:        2158 (27)
-Short runs:        2077 (21)
-Short runs:        2061 (23)
-Short runs:        2007 (20)
-Short runs:        1927 (22)
-Short runs:        1877 (25)
-Short runs:        1788 (24)
-Short runs:        1767 (13)
-Short runs:        1753 (12)
-Short runs:        1695 (9)
-Short runs:        1670 (11)
-Short runs:        1443 (28)
-Short runs:        1176 (16)
-Short runs:        1057 (1)
-Short runs:         912 (14)
-Short runs:         792 (18)
-Short runs:         738 (19)
-Short runs:         694 (15)
-Short runs:         588 (36)
-Short runs:         549 (34)
-Short runs:         489 (35)
-Short runs:         444 (17)
-Short runs:         413 (37)
-
-Exact runs:      184227
-Long runs:       276738
-
-Long  runs:        5562 (+1)
-Long  runs:        1007 (+2)
-Long  runs:         863 (+3)
-Long  runs:         901 (+4)
-Long  runs:         951 (+5)
-Long  runs:         882 (+6)
-Long  runs:         997 (+7)
-Long  runs:        1052 (+8)
-Long  runs:         824 (+9)
-Long  runs:         864 (+10)
-Long  runs:         885 (+11)
-Long  runs:         903 (+12)
-Long  runs:        1014 (+13)
-Long  runs:         808 (+14)
-Long  runs:         918 (+15)
-Long  runs:         914 (+16)
-Long  runs:         779 (+17)
-Long  runs:         889 (+18)
-Long  runs:         649 (+19)
-Long  runs:         547 (+20)
-Long  runs:        2207 (+21)
-Long  runs:       16573 (+22)
-Long  runs:        4678 (+23)
-Long  runs:      146793 (+24)
-Long  runs:       78801 (+25)
-Long  runs:        5180 (+26)
-Long  runs:          54 (+27)
-Long  runs:           3 (+28)
-Long  runs:           0 (+29)
-Long  runs:           0 (+30)
-Long  runs:           0 (+31)
-Long  runs:           0 (+32)
-Long  runs:           0 (+33)
-Long  runs:           0 (+34)
-Long  runs:           0 (+35)
-Long  runs:           6 (+36)
-Long  runs:          15 (+37)
-Long  runs:           6 (+38)
-Long  runs:         213 (+39)
-
+Bytes read:  1033491456 (blocks: 15773)
+Comparisons:   63907898 (0)
+Remainders copied to next run:
+Remainder:  0:       1510
+Remainder:  1:        354
+Remainder:  2:        515
+Remainder:  3:        405
+Remainder:  4:        384
+Remainder:  5:       2336
+Remainder:  6:        399
+Remainder:  7:        406
+Remainder:  8:        481
+Remainder:  9:        356
+Remainder: 10:       1403
+Remainder: 11:        388
+Remainder: 12:        641
+Remainder: 13:        428
+Remainder: 14:        380
+Remainder: 15:       3043
+Remainder: 16:        462
+Remainder: 17:        440
+Remainder: 18:        516
+Remainder: 19:        432
+Remainder: 20:         21
+Remainder: 21:         24
+Remainder: 22:         26
+Remainder: 23:         38
+Remainder: 24:         21
+Remainder: 25:         30
+Remainder: 26:         21
+Remainder: 27:         25
+Remainder: 28:         26
+Remainder: 29:         27
+Remainder: 30:         18
+Remainder: 31:         24
+Remainder: 32:         19
+Remainder: 33:         17
+Remainder: 34:         27
+Remainder: 35:         17
+Remainder: 36:         26
+Remainder: 37:         22
+Remainder: 38:         19
+Remainder: 39:         14
+Remainder: 40:         13
+Remainder: 41:         19
+Hex string counts by length:
+ [   1]       29924
+ [   2]       13413
+ [   3]        4437
+ [   4]         595
+ [   5]      103127
+ [   6]       30461
+ [   7]       17669
+ [   8]         479
+ [   9]          14
+ [  10]        1236
+ [  11]        1022
+ [  12]         830
+ [  13]         733
+ [  14]         418
+ [  15]         297
+ [  16]         167
+ [  17]          19
+ [  18]          68
+ [  19]           6
+ [  20]        1513
+ [  21]        1295
+ [  22]        1224
+ [  23]        1392
+ [  24]        1191
+ [  25]        1055
+ [  26]        1542
+ [  27]        1391
+ [  28]        1076
+ [  29]        3300
+ [  30]       19262
+ [  31]       63679
+ [  32]       70641
+ [  33]        4764
+ [  34]         384
+ [  35]         198
+ [  36]         190
+ [  37]          62
+ [  38]        1773
+ [  39]          61
+ [  41]        5562
+ [  42]        1008
+ [  43]         868
+ [  44]         904
+ [  45]         947
+ [  46]         880
+ [  47]         998
+ [  48]        1047
+ [  49]         819
+ [  50]         861
+ [  51]         884
+ [  52]         904
+ [  53]        1013
+ [  54]         812
+ [  55]         916
+ [  56]         916
+ [  57]         783
+ [  58]         889
+ [  59]         651
+ [  60]         548
+ [  61]        2205
+ [  62]       16575
+ [  63]        4677
+ [  64]      146794
+ [  65]       78805
+ [  66]        5175
+ [  67]          54
+ [  68]           3
+ [  76]           6
+ [  77]          15
+ [  78]           6
+ [  80]          24
+ [  84]           6
+ [  96]          36
+ [ 128]          33
+ [ 131]           6
+ [ 132]          12
+ [ 134]           3
+ [ 135]           3
+ [ 138]           6
+ [ 156]           6
+ [ 169]           6
+ [ 176]           6
+ [ 192]           6
+ [ 232]           6
+ [ 288]           6
+ [ 308]          18
+ [ 309]          24
+ [ 906]           6
  */
