@@ -209,53 +209,48 @@ static const unsigned char * scan_hit_short(const unsigned char *buf, const unsi
     // Unrolled checking the next 40 bytes (must be terminated). We know the
     // most frequent lengths of short hex strings, so we for those first by
     // looking at N+1
-    NEED_HEX(3);
-    NEED_HEX(33);
-    NEED_HEX(4);
-    NEED_HEX(6);
-    NEED_HEX(32);
-
-    // TODO: the rest of these could be tuned but it likely won't make too much
-    // difference since the first 2 cover the majority of cases anyway.
-    NEED_HEX(1);
-    NEED_HEX(2);
-    // NEED_HEX(3);
-    // NEED_HEX(4);
-    NEED_HEX(5);
-    // NEED_HEX(6);
-    NEED_HEX(7);
-    NEED_HEX(8);
-    NEED_HEX(9);
-    NEED_HEX(10);
-    NEED_HEX(11);
-    NEED_HEX(12);
-    NEED_HEX(13);
-    NEED_HEX(14);
-    NEED_HEX(15);
-    NEED_HEX(16);
-    NEED_HEX(17);
-    NEED_HEX(18);
-    NEED_HEX(19);
-    NEED_HEX(20);
-    NEED_HEX(21);
-    NEED_HEX(22);
-    NEED_HEX(23);
-    NEED_HEX(24);
-    NEED_HEX(25);
-    NEED_HEX(26);
-    NEED_HEX(27);
-    NEED_HEX(28);
-    NEED_HEX(29);
-    NEED_HEX(30);
-    NEED_HEX(31);
-    // NEED_HEX(32);
-    // NEED_HEX(33);
-    NEED_HEX(34);
-    NEED_HEX(35);
-    NEED_HEX(36);
-    NEED_HEX(37);
-    NEED_HEX(38);
-    NEED_HEX(39);
+    // sorted by frequency of lengths seen in primary sample
+    // TODO: accept this ordering as input
+    // TOOD: extra credit, generate counts from first block
+    NEED_HEX(5); // 103098
+    NEED_HEX(32); // 70630
+    NEED_HEX(31); // 63754
+    NEED_HEX(6); // 30347
+    NEED_HEX(1); // 29874
+    NEED_HEX(30); // 19119
+    NEED_HEX(7); // 17701
+    NEED_HEX(2); // 13914
+    NEED_HEX(33); // 4749
+    NEED_HEX(3); // 4510
+    NEED_HEX(29); // 3329
+    NEED_HEX(38); // 1763
+    NEED_HEX(20); // 1532
+    NEED_HEX(26); // 1512
+    NEED_HEX(23); // 1395
+    NEED_HEX(27); // 1384
+    NEED_HEX(21); // 1364
+    NEED_HEX(22); // 1270
+    NEED_HEX(10); // 1239
+    NEED_HEX(24); // 1223
+    NEED_HEX(28); // 1091
+    NEED_HEX(25); // 1048
+    NEED_HEX(11); // 1024
+    NEED_HEX(12); // 839
+    NEED_HEX(13); // 734
+    NEED_HEX(4); // 603
+    NEED_HEX(8); // 494
+    NEED_HEX(14); // 429
+    NEED_HEX(34); // 375
+    NEED_HEX(15); // 306
+    NEED_HEX(35); // 192
+    NEED_HEX(36); // 175
+    NEED_HEX(16); // 165
+    NEED_HEX(18); // 69
+    NEED_HEX(37); // 62
+    NEED_HEX(39); // 60
+    NEED_HEX(17); // 19
+    NEED_HEX(9); // 13
+    NEED_HEX(19); // 7
 
     if (unlikely(!is_lower_hex(buf+40))) {
         print_hit(buf);
@@ -345,7 +340,7 @@ int main(int argc, const char *argv[]) {
 
 #if DO_INST
     // 63907898/1033491456 are the results from a sample file
-    dprintf(2, "Comparisons: %10d (%d)\n", cmp, cmp-63907898);
+    dprintf(2, "Comparisons: %10d (%d)\n", cmp, cmp-63273413);
     dprintf(2, "Remainders copied to next run:\n");
     for (int i = 0; i < arr_len(remainders); i++)
         if (remainders[i])
@@ -361,7 +356,7 @@ int main(int argc, const char *argv[]) {
 
 /*
 Bytes read:  1033491456 (blocks: 15773)
-Comparisons:   63907898 (0)
+Comparisons:   63273413 (0)
 Remainders copied to next run:
 Remainder:  0:       1510
 Remainder:  1:        354

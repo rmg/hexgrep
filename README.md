@@ -77,7 +77,7 @@ implementations compare to each other.
 | simple (Go) | 0m6.793s | 0m5.453s | 0m2.364s |
 | simple (Rust) | 0m2.811s | 0m2.054s | 0m0.722s |
 | simple (Node) | 0m11.054s | 0m9.142s | 0m2.231s |
-| custom (C) | **0m0.330s** | **0m0.140s** | **0m0.172s** |
+| custom (C) | **0m0.325s** | **0m0.135s** | **0m0.173s** |
 
 By comparing the times you can see that each implementation is more or less
 *O(n)* (or *O(nm)*;  since they are all using the same needle size it
