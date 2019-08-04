@@ -85,6 +85,7 @@ void __assert_hit(const unsigned char *buf) {
 // is implied.
 static void print_hit(const unsigned char *buf) {
     INST(hits++);
+    INST(runlens[40]++);
     assert_hit(buf);
     printf("%.40s\n", buf);
 }
@@ -444,6 +445,7 @@ Hex string counts by length:
  [  37]          62
  [  38]        1773
  [  39]          61
+ [  40]      184227 *
  [  41]        5562
  [  42]        1008
  [  43]         868
