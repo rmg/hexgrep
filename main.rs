@@ -15,50 +15,100 @@ limitations under the License.
 */
 
 use std::io::{Read, Write,stdin, stdout};
-use std::str;
+// use std::str;
 
 fn hit(needle: &[u8]) {
 	stdout().write(&needle).ok();
 	stdout().write(&[b'\n']).ok();
 }
 
-fn scan_slice(inb: &[u8]) -> usize {
-	let mut count = 0;
-	let len = inb.len();
-	for (i, &b) in inb.into_iter().enumerate() {
-		if b >= b'0' && b <= b'9' || b >= b'a' && b <= b'f' {
-			count += 1;
-			continue
-		}
-		if count == 40 {
-			hit(&inb[i-40..i]);
-		}
-		count = 0
+const IS_HEX : [bool;256] = [
+	false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+];
+
+#[derive(Debug)]
+enum ScanState<T> {
+	Matched(T),
+	Skipping,
+}
+
+fn scan_slice(buf: &[u8]) -> usize {
+	let len = buf.len();
+	let mut i = 0;
+	let mut state = ScanState::Matched(0);
+	while i < len {
+		state = if IS_HEX[buf[i] as usize] {
+			match state {
+				ScanState::Matched(n) => {
+					ScanState::Matched(n+1)
+				},
+				ScanState::Skipping => {
+					ScanState::Matched(1)
+				}
+			}
+		} else {
+			match state {
+				ScanState::Matched(40) => {
+					hit(&buf[i-40..i]);
+					ScanState::Skipping
+				},
+				_ => ScanState::Skipping
+			}
+		};
+		i += 1
 	}
-	if count == 40 {
-		hit(&inb[len-40..]);
-		count = 0
+	if let ScanState::Matched(count) = state {
+		if count > 40 {
+			41
+		} else {
+			count
+		}
+	} else {
+		0
 	}
-	if count > 40 { 41 } else { count }
 }
 
 fn sscan(mut input: impl Read) {
-	let mut backbuf = vec![0u8; 64*1024*1024];
-	let bbuf = backbuf.as_mut_slice();
-	// let mut bbuf = [0u8; 2*1024*1024];
+	// let mut backbuf = vec![0u8; 64*1024*1024];
+	// let bbuf = backbuf.as_mut_slice();
+	let mut buf = [0u8; 64*1024];
 	let mut off = 0;
 	let mut total_read = 0;
-	while let Ok(n) = input.read(&mut bbuf[off..]) {
+	let mut blocks = 0;
+	while let Ok(n) = input.read(&mut buf[off..]) {
 		total_read += n;
 		if n == 0 {
 			break
 		}
-		off = scan_slice(&bbuf[..n]);
+		off = scan_slice(&buf[..n]);
+		blocks += 1;
+		if off > 0 {
+			eprintln!("Remainder: {}", off)
+		}
 		for i in 0..off {
-			bbuf[i] = bbuf[n-off+i];
+			// eprintln!("copy: {}/{}", i, off);
+			buf[i] = buf[(n-off)+i];
 		}
 	}
-	eprintln!("Total bytes read: {}", total_read);
+	if off >= 40 {
+		eprintln!("Need to scan remainder: {}", off)
+	}
+	eprintln!("Total bytes read: {} (blocks: {})", total_read, blocks);
 }
 
 fn main() {

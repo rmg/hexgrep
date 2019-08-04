@@ -68,6 +68,10 @@ scan-go: main.go
 scan-rs: main.rs
 	rustc -O -o $@ $<
 
+check-rs: scan-rs
+	time ./scan-rs < raw.tar > rs.txt
+	diff -q rs.txt prev.txt || diff rs.txt prev.txt | wc -l
+
 %.txt: scan-% $(SAMPLE)
 	time ./scan-$* < $(SAMPLE) > $@
 	time ./scan-$* < $(SAMPLE) > $@
