@@ -84,3 +84,9 @@ By comparing the times you can see that each implementation is more or less
 essentially becomes a constant). The difference is in the constant factor. On
 this sample, the custom search only actually looks at 1/9 of the bytes being
 processed thanks to aggressive skipping.
+
+## License
+
+Copyright 2019 Ryan Graham
+
+All source code licensed under Apache-2.0. See [LICENSE](LICENSE).
