@@ -1,21 +1,22 @@
 package main
 
 import (
-	"io"
 	"fmt"
+	"io"
 	"log"
 	"os"
-	"runtime/pprof"
 	"runtime"
+	"runtime/pprof"
 )
 
-const BUF = 64*1024 *1024
+const BUF = 64 * 1024 * 1024
 
 func searchWrite(buf []byte, out io.Writer) int {
 	count := 0
 	for i, b := range buf {
 		switch {
-		case b >= '0' && b <= '9': fallthrough
+		case b >= '0' && b <= '9':
+			fallthrough
 		case b >= 'a' && b <= 'f':
 			count += 1
 		default:
@@ -29,7 +30,7 @@ func searchWrite(buf []byte, out io.Writer) int {
 		}
 	}
 	if count == 40 {
-		right := len(buf)-1
+		right := len(buf) - 1
 		left := right - count
 		out.Write(buf[left:right])
 		out.Write([]byte{'\n'})
@@ -51,7 +52,7 @@ func scan(input io.Reader) {
 		if err == io.EOF {
 			break
 		}
-		off = searchWrite(curr[:off + n], os.Stdout)
+		off = searchWrite(curr[:off+n], os.Stdout)
 		if off > 0 {
 			copy(curr[:off], curr[n-off:n])
 		}
