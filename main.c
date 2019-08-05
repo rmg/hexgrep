@@ -326,9 +326,9 @@ static const size_t MAX_BUF = 64*1024;
 int main(int argc, const char *argv[]) {
     unsigned char buf[MAX_BUF];
     int_fast32_t remainder = 0;
-    size_t total_read = 0;
+    INST(size_t total_read = 0);
     ssize_t nread = 0;
-    int_fast32_t scans = 0;
+    INST(int scans = 0);
     int_fast32_t max_scan = 0;
     int fd = 0;
     if (argc > 1) {
@@ -336,7 +336,7 @@ int main(int argc, const char *argv[]) {
     }
     assert(fd >= 0);
     while ((nread = read(fd, buf+remainder, MAX_BUF-remainder)) > 0) {
-        total_read += nread;
+        INST(total_read += nread);
         max_scan = nread + remainder;
         if (max_scan < 41) {
             remainder = max_scan;
@@ -346,13 +346,13 @@ int main(int argc, const char *argv[]) {
         if (likely(remainder)) {
             memcpy(buf, buf+max_scan-remainder, remainder);
         }
-        scans++;
+        INST(scans++);
         INST(remainders[remainder]++);
     }
     if (remainder >= 40) {
         scan_all_slow(buf+max_scan-remainder, buf+max_scan);
     }
-    dprintf(2, "Bytes read:  %10zu (blocks: %d)\n", total_read, scans);
+    INST(dprintf(2, "Bytes read:  %10zu (blocks: %d)\n", total_read, scans));
 
 #if DO_INST
     // 63907898/1033491456 are the results from a sample file
