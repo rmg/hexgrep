@@ -14,12 +14,11 @@
 
 FROM buildpack-deps:xenial
 
-ADD main.c /
-RUN cc -static -O3 -o scan main.c && ls -al
+ADD main.c Makefile /
+RUN make hexgrep-static
 
 FROM scratch
 
-COPY --from=0 scan /
+COPY --from=0 hexgrep-static /hexgrep
 
-ENTRYPOINT ["/scan"]
-
+ENTRYPOINT ["/hexgrep"]

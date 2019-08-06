@@ -12,19 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-all: c.txt go.txt rs.txt grep.txt ripgrep.txt js.txt
-
 SAMPLE ?= raw.tar
-CFLAGS :=  -Werror -Wall -march=native -fvectorize
+CFLAGS :=  -Werror -Wall
 FAST_CFLAGS := $(CFLAGS) -O3 -DNDEBUG
 DEBUG_CFLAGS := $(CFLAGS) -g
 SIMD_CFLAGS := $(CFLAGS) -DUSE_SIMD=1
 
+hexgrep scan-c-fast: main.c
+	$(CC) $(FAST_CFLAGS) -o $@ $<
+	strip $@
+
+hexgrep-static: main.c
+	$(CC) $(FAST_CFLAGS) -static -o $@ $<
+	strip $@
+
+all: c.txt go.txt rs.txt grep.txt ripgrep.txt js.txt
+
 scan-c: main.c
 	$(CC) $(CFLAGS) -o $@ $<
-
-scan-c-fast: main.c
-	$(CC) $(CFLAGS) -O3 -DNDEBUG -o $@ $<
 
 scan-c-fast-simd: main.c
 	$(CC) $(SIMD_CFLAGS) -O3 -DNDEBUG -o $@ $<
@@ -83,6 +88,18 @@ ripgrep.txt: $(SAMPLE)
 	time rg -o -a '[a-f0-9]{40}' < $(SAMPLE) > $@ || true
 	time rg -o -a '[a-f0-9]{40}' < $(SAMPLE) > $@ || true
 
+docker.txt: $(SAMPLE)
+	docker build -t hexgrep:local .
+	time docker run --volume $(abspath ${SAMPLE}):/sample --rm -i hexgrep:local sample > $@ || true
+	time docker run --volume $(abspath ${SAMPLE}):/sample --rm -i hexgrep:local sample > $@ || true
+	time docker run --volume $(abspath ${SAMPLE}):/sample --rm -i hexgrep:local sample > $@ || true
+
 raw.tar:
 	docker pull node:latst
 	docker save -o $@ node:latest
+
+hexgrep-linux: Makefile main.c
+	mkdir -p linux
+	cp $^ linux/
+	docker run --rm --volume $(abspath linux):/work --workdir /work buildpack-deps:xenial make hexgrep-static
+	cp linux/hexgrep-static hexgrep-linux
