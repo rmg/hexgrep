@@ -213,8 +213,6 @@ static const unsigned char * scan_hit_long(const unsigned char *buf, const unsig
 static const unsigned char * scan_hit_short(const unsigned char *buf, const unsigned char * end) {
     assert_hex(buf);
 
-#define NEED_HEX(N) if (!is_lower_hex(buf+N)) { INST(runlens[runlen(buf, end)]++); return scan_skip(buf+N, end); }
-
     // Can't possibly match, we don't have enough room left. Since we know we'll
     // scan these on the next pass it is better to return early instead of
     // scanning them twice.
@@ -222,51 +220,60 @@ static const unsigned char * scan_hit_short(const unsigned char *buf, const unsi
         return buf;
     }
 
-    // Unrolled checking the next 40 bytes (must be terminated). We know the
-    // most frequent lengths of short hex strings, so we for those first by
-    // looking at N+1
-    // sorted by frequency of lengths seen in primary sample
+    // We know offset 0 is a hex because that's why we're here.
+    // We know offset 40 needs to be a non-hex otherwise we're in a 41+ run.
+    // We know 1-39 all need to be hex characters.
+    // Rather than checking them in linear order, we use statistics to determine
+    // the optimal order to check for an early exit.
     // TODO: accept this ordering as input
     // TOOD: extra credit, generate counts from first block
-    NEED_HEX(5); // 103098
-    NEED_HEX(32); // 70630
-    NEED_HEX(31); // 63754
-    NEED_HEX(6); // 30347
-    NEED_HEX(1); // 29874
-    NEED_HEX(30); // 19119
-    NEED_HEX(7); // 17701
-    NEED_HEX(2); // 13914
-    NEED_HEX(33); // 4749
-    NEED_HEX(3); // 4510
-    NEED_HEX(29); // 3329
-    NEED_HEX(38); // 1763
-    NEED_HEX(20); // 1532
-    NEED_HEX(26); // 1512
-    NEED_HEX(23); // 1395
-    NEED_HEX(27); // 1384
-    NEED_HEX(21); // 1364
-    NEED_HEX(22); // 1270
-    NEED_HEX(10); // 1239
-    NEED_HEX(24); // 1223
-    NEED_HEX(28); // 1091
-    NEED_HEX(25); // 1048
-    NEED_HEX(11); // 1024
-    NEED_HEX(12); // 839
-    NEED_HEX(13); // 734
-    NEED_HEX(4); // 603
-    NEED_HEX(8); // 494
-    NEED_HEX(14); // 429
-    NEED_HEX(34); // 375
-    NEED_HEX(15); // 306
-    NEED_HEX(35); // 192
-    NEED_HEX(36); // 175
-    NEED_HEX(16); // 165
-    NEED_HEX(18); // 69
-    NEED_HEX(37); // 62
-    NEED_HEX(39); // 60
-    NEED_HEX(17); // 19
-    NEED_HEX(9); // 13
-    NEED_HEX(19); // 7
+    const int checks[39] = {
+        5, // 103098
+        32, // 70630
+        31, // 63754
+        6, // 30347
+        1, // 29874
+        30, // 19119
+        7, // 17701
+        2, // 13914
+        33, // 4749
+        3, // 4510
+        29, // 3329
+        38, // 1763
+        20, // 1532
+        26, // 1512
+        23, // 1395
+        27, // 1384
+        21, // 1364
+        22, // 1270
+        10, // 1239
+        24, // 1223
+        28, // 1091
+        25, // 1048
+        11, // 1024
+        12, // 839
+        13, // 734
+        4, // 603
+        8, // 494
+        14, // 429
+        34, // 375
+        15, // 306
+        35, // 192
+        36, // 175
+        16, // 165
+        18, // 69
+        37, // 62
+        39, // 60
+        17, // 19
+        9, // 13
+        19, // 7
+    };
+    for (int i = 0; i < sizeof(checks)/sizeof(checks[0]); i++) {
+        if (!is_lower_hex(buf+checks[i])) {
+            INST(runlens[runlen(buf, end)]++);
+            return scan_skip(buf+checks[i], end);
+        }
+    }
 
     if (unlikely(!is_lower_hex(buf+40))) {
         print_hit(buf);
