@@ -313,13 +313,13 @@ static int_fast32_t scan_all_slow(const unsigned char *buf, const unsigned char 
     while (buf < end) {
         if (is_lower_hex(buf)) {
             count++;
-            buf++;
-            continue;
+        } else {
+            if (count == 40) {
+                print_hit(buf-count);
+            }
+            count = 0;
         }
-        if (count == 40) {
-            print_hit(buf-count);
-        }
-        count = 0;
+        buf++;
     }
     if (count == 40) {
         print_hit(buf-count);
