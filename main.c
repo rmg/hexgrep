@@ -30,6 +30,8 @@ limitations under the License.
 #if DO_PAGE_ALIGNED
 #include <stdlib.h>
 #endif
+#include <sys/stat.h>
+#include <sys/mman.h>
 
 #ifndef DO_INST
     #define DO_INST 0
@@ -336,6 +338,42 @@ static int_fast32_t scan_all_slow(const unsigned char *buf, const unsigned char 
     return count;
 }
 
+#if USE_MMAP
+static int mmap_scan(int fd) {
+    struct stat st;
+    int32_t remainder = 0;
+
+    if (0 > fstat(fd, &st)) {
+        perror("fstat failed");
+        return 1;
+    }
+// MAP_POPULATE is only available on Linux, but it is also practically required
+// on Linux to make mmap() even half as fast as read() for our usage.
+#if ! __linux__
+#define MAP_POPULATE 0
+#endif
+    const unsigned char * buf = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE|MAP_POPULATE, fd, 0);
+    if (buf == MAP_FAILED) {
+        perror("mmap failed");
+        return 2;
+    }
+    // madvise helps when the file isn't already cached, but that's about it
+    if (0 > madvise((void*)buf, st.st_size, MADV_SEQUENTIAL|MADV_WILLNEED)) {
+        perror("madvise failed");
+        return 3;
+    }
+    remainder = scan_slice_fast(buf, buf+st.st_size);
+    if (remainder >= 40) {
+        scan_all_slow((buf+ st.st_size) - remainder, buf+st.st_size);
+    }
+    if (munmap((void*)buf, st.st_size) != 0) {
+        return 4;
+    }
+    close(fd);
+    return 0;
+}
+#endif
+
 static void fd_readahead(int fd, off_t offset, size_t len) {
 #ifndef DO_READAHEAD
     return;
@@ -392,6 +430,13 @@ int main(int argc, const char *argv[]) {
     int fd = 0;
     if (argc > 1) {
         fd = open(argv[1], O_RDONLY);
+        if (fd < 0) {
+            perror("open failed");
+            return fd;
+        }
+#if USE_MMAP
+        return mmap_scan(fd);
+#endif
     }
 
     // tell the OS to expect sequential reads
