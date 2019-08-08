@@ -228,45 +228,45 @@ static const unsigned char * scan_hit_short(const unsigned char *buf, const unsi
     // TODO: accept this ordering as input
     // TOOD: extra credit, generate counts from first block
     const int checks[39] = {
-        5, // 103098
-        32, // 70630
-        31, // 63754
-        6, // 30347
-        1, // 29874
-        30, // 19119
-        7, // 17701
-        2, // 13914
-        33, // 4749
-        3, // 4510
-        29, // 3329
-        38, // 1763
-        20, // 1532
-        26, // 1512
-        23, // 1395
-        27, // 1384
-        21, // 1364
-        22, // 1270
-        10, // 1239
-        24, // 1223
-        28, // 1091
-        25, // 1048
-        11, // 1024
-        12, // 839
-        13, // 734
-        4, // 603
-        8, // 494
-        14, // 429
-        34, // 375
-        15, // 306
-        35, // 192
-        36, // 175
-        16, // 165
-        18, // 69
-        37, // 62
-        39, // 60
-        17, // 19
-        9, // 13
-        19, // 7
+        5,
+        32,
+        31,
+        6,
+        1,
+        30,
+        7,
+        2,
+        33,
+        3,
+        29,
+        38,
+        20,
+        26,
+        23,
+        27,
+        21,
+        22,
+        10,
+        24,
+        28,
+        25,
+        11,
+        12,
+        13,
+        4,
+        8,
+        14,
+        34,
+        15,
+        35,
+        36,
+        16,
+        18,
+        37,
+        39,
+        17,
+        9,
+        19,
     };
     for (int i = 0; i < sizeof(checks)/sizeof(checks[0]); i++) {
         if (!is_lower_hex(buf+checks[i])) {
@@ -370,8 +370,8 @@ int main(int argc, const char *argv[]) {
             dprintf(2, "Remainder: %2d: %10d\n", i, remainders[i]);
     dprintf(2, "Hex string counts by length:\n");
     for (int i = 0; i < arr_len(runlens); i++)
-        if (runlens[i])
-            dprintf(2, " [%4d]  %10d%s\n", i, runlens[i], i==40 ? " *" : "");
+        if (i <=40 || runlens[i])
+            dprintf(2, "%5d  %10d%s\n", i, runlens[i], i==40 ? " *" : "");
 #endif
 
     return nread;
