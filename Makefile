@@ -95,7 +95,7 @@ docker.txt: $(SAMPLE)
 	time docker run --volume $(abspath ${SAMPLE}):/sample --rm -i hexgrep:local sample > $@ || true
 
 raw.tar:
-	docker pull node:latst
+	docker pull node:latest
 	docker save -o $@ node:latest
 
 hexgrep-linux: Makefile main.c
