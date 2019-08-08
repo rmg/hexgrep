@@ -44,23 +44,23 @@ main.s: main.c
 	$(CC) $(CFLAGS) -O3 -DNDEBUG -S -mllvm --x86-asm-syntax=intel -o $@ $<
 
 time-simd: scan-c-fast-simd
-	time ./scan-c-fast-simd < raw.tar > c.txt
+	time ./scan-c-fast-simd < $(SAMPLE) > c.txt
 	diff -q c.txt prev.txt || diff c.txt prev.txt | wc -l
 
 time: scan-c-fast
-	time ./scan-c-fast < raw.tar > c.txt
+	time ./scan-c-fast < $(SAMPLE) > c.txt
 	diff -q c.txt prev.txt || diff c.txt prev.txt | wc -l
 
 counts: scan-c-counters
-	time ./scan-c-counters < raw.tar > c.txt
+	time ./scan-c-counters < $(SAMPLE) > c.txt
 	diff -q c.txt prev.txt || diff c.txt prev.txt | wc -l
 
 test: scan-c-debug
-	time ./scan-c-debug < raw.tar > c.txt
+	time ./scan-c-debug < $(SAMPLE) > c.txt
 	diff -q c.txt prev.txt || diff c.txt prev.txt | wc -l
 
 debug: scan-c-debug
-	lldb ./scan-c-debug raw.tar
+	lldb ./scan-c-debug $(SAMPLE)
 
 scan-go: main.go
 	go build -o $@ $<
@@ -90,13 +90,23 @@ ripgrep.txt: $(SAMPLE)
 
 docker.txt: $(SAMPLE)
 	docker build -t hexgrep:local .
-	time docker run --volume $(abspath ${SAMPLE}):/sample --rm -i hexgrep:local sample > $@ || true
-	time docker run --volume $(abspath ${SAMPLE}):/sample --rm -i hexgrep:local sample > $@ || true
-	time docker run --volume $(abspath ${SAMPLE}):/sample --rm -i hexgrep:local sample > $@ || true
+	time docker run --volume $(abspath $(SAMPLE)):/sample --rm -i hexgrep:local sample > $@ || true
+	time docker run --volume $(abspath $(SAMPLE)):/sample --rm -i hexgrep:local sample > $@ || true
+	time docker run --volume $(abspath $(SAMPLE)):/sample --rm -i hexgrep:local sample > $@ || true
 
-raw.tar:
+node-red.tar:
+	docker pull nodered/node-red-docker:v10
+	docker save -o $@ nodered/node-red-docker:v10
+
+node-red2x.tar: node-red.tar
+	cat $< $< > $@
+
+node.tar:
 	docker pull node:latest
 	docker save -o $@ node:latest
+
+raw.tar: node.tar
+	cat $< $< > $@
 
 hexgrep-linux: Makefile main.c
 	mkdir -p linux
