@@ -328,9 +328,12 @@ static int_fast32_t scan_all_slow(const unsigned char *buf, const unsigned char 
     return count;
 }
 
-static const size_t MAX_BUF = 64*1024;
-
 int main(int argc, const char *argv[]) {
+    // 256k sounds nice.
+    // 64*4k pages or 128*2k pages or 512*512b fs blocks
+    // small enough for stack allocation
+    // small enough to fit in cache on modern CPU
+    const size_t MAX_BUF = 64*4096;
     unsigned char buf[MAX_BUF];
     int_fast32_t remainder = 0;
     INST(size_t total_read = 0);
