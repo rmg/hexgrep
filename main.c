@@ -14,6 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+#if __linux__
+// allow readahead(2)
+#define _GNU_SOURCE
+#endif
+
 #include <sys/types.h>
 #include <stdio.h>
 #include <string.h>
@@ -328,6 +333,37 @@ static int_fast32_t scan_all_slow(const unsigned char *buf, const unsigned char 
     return count;
 }
 
+static void fd_readahead(int fd, off_t offset, size_t len) {
+#ifndef DO_READAHEAD
+    return;
+#endif
+#if __linux__
+    if (0 > readahead(fd, offset, len)) {
+        perror("readahead");
+    }
+#elif __APPLE__
+    struct radvisory radvise = { .ra_offset = offset, .ra_count = len };
+    if (0 > fcntl(fd, F_RDADVISE, &radvise)) {
+        perror("inner radvise");
+    }
+#endif
+    return;
+}
+
+static void fd_advise(int fd) {
+#ifndef DO_ADVISE
+    return;
+#endif
+#if __linux__
+    // same advise as would give mmap
+    posix_fadvise(fd, 0, 0, POSIX_FADV_SEQUENTIAL);
+    posix_fadvise(fd, 0, 0, POSIX_FADV_WILLNEED);
+#elif __APPLE__
+    // enable readahead on this file
+    fcntl(fd, F_RDAHEAD, 1);
+#endif
+}
+
 int main(int argc, const char *argv[]) {
     // 256k sounds nice.
     // 64*4k pages or 128*2k pages or 512*512b fs blocks
@@ -336,7 +372,7 @@ int main(int argc, const char *argv[]) {
     const size_t MAX_BUF = 64*4096;
     unsigned char buf[MAX_BUF];
     int_fast32_t remainder = 0;
-    INST(size_t total_read = 0);
+    size_t total_read = 0;
     ssize_t nread = 0;
     INST(int scans = 0);
     int_fast32_t max_scan = 0;
@@ -344,9 +380,17 @@ int main(int argc, const char *argv[]) {
     if (argc > 1) {
         fd = open(argv[1], O_RDONLY);
     }
+
+    // tell the OS to expect sequential reads
+    fd_advise(fd);
+
     assert(fd >= 0);
     while ((nread = read(fd, buf+remainder, MAX_BUF-remainder)) > 0) {
-        INST(total_read += nread);
+        total_read += nread;
+        // tell kernel to queue up the next read while we process the current one
+        if (nread == MAX_BUF-remainder) {
+            fd_readahead(fd, total_read, MAX_BUF);
+        }
         max_scan = nread + remainder;
         if (max_scan < 41) {
             remainder = max_scan;
