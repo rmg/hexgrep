@@ -27,6 +27,9 @@ limitations under the License.
 #include <stdbool.h>
 #include <stdint.h>
 #include <assert.h>
+#if DO_PAGE_ALIGNED
+#include <stdlib.h>
+#endif
 
 #ifndef DO_INST
     #define DO_INST 0
@@ -365,12 +368,22 @@ static void fd_advise(int fd) {
 }
 
 int main(int argc, const char *argv[]) {
+#if DO_PAGE_ALIGNED
+    int page_size = getpagesize();
+    const size_t MAX_BUF = page_size * 64;
+    unsigned char *buf;
+    if (0 > posix_memalign((void**)&buf, page_size, MAX_BUF)) {
+        perror("memalign");
+        return 20;
+    }
+#else
     // 256k sounds nice.
     // 64*4k pages or 128*2k pages or 512*512b fs blocks
     // small enough for stack allocation
     // small enough to fit in cache on modern CPU
     const size_t MAX_BUF = 64*4096;
     unsigned char buf[MAX_BUF];
+#endif
     int_fast32_t remainder = 0;
     size_t total_read = 0;
     ssize_t nread = 0;
