@@ -14,8 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-use std::io::{Read, Write,stdin, stdout};
-use std::str;
+use std::env;
+use std::fs::File;
+use std::io::{Read, Write, stdin, stdout};
 
 fn hit(needle: &[u8]) {
 	stdout().write(&needle).ok();
@@ -43,13 +44,9 @@ fn scan_slice(inb: &[u8]) -> usize {
 }
 
 fn sscan(mut input: impl Read) {
-	let mut backbuf = vec![0u8; 64*1024*1024];
-	let bbuf = backbuf.as_mut_slice();
-	// let mut bbuf = [0u8; 2*1024*1024];
+	let mut bbuf = [0u8; 64*4096];
 	let mut off = 0;
-	let mut total_read = 0;
 	while let Ok(n) = input.read(&mut bbuf[off..]) {
-		total_read += n;
 		if n == 0 {
 			break
 		}
@@ -58,9 +55,14 @@ fn sscan(mut input: impl Read) {
 			bbuf[i] = bbuf[n-off+i];
 		}
 	}
-	eprintln!("Total bytes read: {}", total_read);
 }
 
 fn main() {
-	sscan(stdin().lock())
+	let args: Vec<String> = env::args().collect();
+	if args.len() == 2 {
+		let file = File::open(&args[1]).unwrap();
+		sscan(file)
+	} else {
+		sscan(stdin().lock())
+	}
 }
