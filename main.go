@@ -13,18 +13,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package main
 
 import (
-	"fmt"
 	"io"
-	"log"
 	"os"
-	"runtime"
-	"runtime/pprof"
 )
 
-const BUF = 64 * 1024 * 1024
+const maxBuf = 64 * 4096
 
 func searchWrite(buf []byte, out io.Writer) int {
 	count := 0
@@ -33,7 +30,7 @@ func searchWrite(buf []byte, out io.Writer) int {
 		case b >= '0' && b <= '9':
 			fallthrough
 		case b >= 'a' && b <= 'f':
-			count += 1
+			count++
 		default:
 			if count == 40 {
 				right := i
@@ -58,7 +55,7 @@ func searchWrite(buf []byte, out io.Writer) int {
 }
 
 func scan(input io.Reader) {
-	curr := make([]byte, BUF)
+	curr := make([]byte, maxBuf)
 	reads := make([]int, 0)
 	off := 0
 	for {
@@ -75,32 +72,13 @@ func scan(input io.Reader) {
 }
 
 func main() {
-	scan(os.Stdin)
-}
-
-func pmain() {
-	c, err := os.Create("sha1scan.cpu.prof")
-	if err != nil {
-		log.Fatal("could not create CPU profile: ", err)
-	}
-	defer c.Close()
-	if err := pprof.StartCPUProfile(c); err != nil {
-		log.Fatal("could not start CPU profile: ", err)
-	}
-
-	scan(os.Stdin)
-
-	pprof.StopCPUProfile()
-	runtime.GC() // get up-to-date statistics
-
-	for _, p := range pprof.Profiles() {
-		m, err := os.Create(fmt.Sprintf("sha1scan.%s.prof", p.Name()))
+	if len(os.Args) > 1 {
+		f, err := os.Open(os.Args[1])
 		if err != nil {
-			log.Fatalf("could not create %s profile: ", p.Name(), err)
+			panic(err)
 		}
-		defer m.Close()
-		if err := p.WriteTo(m, 1); err != nil {
-			log.Fatal("could not write %s profile: ", p.Name(), err)
-		}
+		scan(f)
+	} else {
+		scan(os.Stdin)
 	}
 }
