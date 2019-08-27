@@ -95,18 +95,26 @@ docker.txt: $(SAMPLE)
 	time docker run --volume $(abspath $(SAMPLE)):/sample --rm -i hexgrep:local sample > $@ || true
 
 node-red.tar:
-	docker pull nodered/node-red-docker:v10
-	docker save -o $@ nodered/node-red-docker:v10
+	./download-from-docker-hub.sh nodered/node-red-docker:v10@sha256:066276b36e353513cc03a6ed9823f7080c0582a6ff0823dfc94be164df32bba0 > $@
+	#docker pull nodered/node-red-docker:v10@sha256:066276b36e353513cc03a6ed9823f7080c0582a6ff0823dfc94be164df32bba0
+	#docker save -o $@ nodered/node-red-docker:v10@sha256:066276b36e353513cc03a6ed9823f7080c0582a6ff0823dfc94be164df32bba0
 
-node-red2x.tar: node-red.tar
-	cat $< $< > $@
+node-latest.tar:
+	./download-from-docker-hub.sh library/node:latest@sha256:be391e015ffcd5d21a879cb07614aa57873715c3bd742406394ffa9d221f726d > $@
+	#docker pull node:latest@sha256:be391e015ffcd5d21a879cb07614aa57873715c3bd742406394ffa9d221f726d
+	#docker save -o $@ node:latest@sha256:be391e015ffcd5d21a879cb07614aa57873715c3bd742406394ffa9d221f726d
 
-node.tar:
-	docker pull node:latest
-	docker save -o $@ node:latest
+%: %.bz2
+	bzip2 -d -k $<
 
-raw.tar: node.tar
-	cat $< $< > $@
+all-hex.txt:
+	dd bs=1k count=50k if=/dev/zero | env LC_CTYPE=C tr -C 0 0 > $@
+
+no-hex.txt:
+	dd bs=4k count=50k if=/dev/zero of=$@
+
+tr: tr.c
+	$(CC) -O3 -o $@ $^
 
 hexgrep-linux: Makefile main.c
 	mkdir -p linux
