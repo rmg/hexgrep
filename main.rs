@@ -26,7 +26,7 @@ fn scan_slice(inb: &[u8]) -> usize {
 	let mut count = 0;
 	let len = inb.len();
 	for (i, &b) in inb.into_iter().enumerate() {
-		if b >= b'0' && b <= b'9' || b >= b'a' && b <= b'f' {
+		if b.is_ascii_digit() || (b'a'..=b'f').contains(&b) {
 			count += 1;
 			continue
 		}
