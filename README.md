@@ -72,12 +72,12 @@ implementations compare to each other.
 
 | Time | real | user | system |
 |------|------|------|--------|
-| grep | 0m26.256s | 0m22.659s | 0m3.324s |
-| ripgrep | 0m2.447s | 0m2.202s | 0m0.218s |
-| simple (Go) | 0m6.793s | 0m5.453s | 0m2.364s |
-| simple (Rust) | 0m2.811s | 0m2.054s | 0m0.722s |
-| simple (Node) | 0m11.054s | 0m9.142s | 0m2.231s |
-| custom (C) | **0m0.325s** | **0m0.135s** | **0m0.173s** |
+| grep | 0m18.034s | 0m15.713s | 0m2.257s |
+| ripgrep | 0m1.709s | 0m1.541s | 0m0.147s |
+| simple (Go) | 0m1.889s | 0m1.679s | 0m0.211s |
+| simple (Rust) | 0m2.169s | 0m1.943s | 0m0.219s |
+| simple (Node) | 0m6.458s | 0m6.043s | 0m0.627s |
+| custom (C) | **0m0.373s** | **0m0.224s** | **0m0.146s** |
 
 By comparing the times you can see that each implementation is more or less
 *O(n)* (or *O(nm)*;  since they are all using the same needle size it
