@@ -43,7 +43,7 @@ fn scan_slice(inb: &[u8]) -> usize {
 }
 
 fn sscan(mut input: impl Read) {
-	let mut backbuf = vec![0u8; 64*1024*1024];
+	let mut backbuf = vec![0u8; 64*4096];
 	let bbuf = backbuf.as_mut_slice();
 	// let mut bbuf = [0u8; 2*1024*1024];
 	let mut off = 0;
