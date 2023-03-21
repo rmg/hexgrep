@@ -14,6 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+#if __linux__
+// allow readahead(2)
+#define _GNU_SOURCE
+#endif
+
 #include <sys/types.h>
 #include <stdio.h>
 #include <string.h>
@@ -22,6 +27,11 @@ limitations under the License.
 #include <stdbool.h>
 #include <stdint.h>
 #include <assert.h>
+#if DO_PAGE_ALIGNED
+#include <stdlib.h>
+#endif
+#include <sys/stat.h>
+#include <sys/mman.h>
 
 #ifndef DO_INST
     #define DO_INST 0
@@ -328,25 +338,117 @@ static int_fast32_t scan_all_slow(const unsigned char *buf, const unsigned char 
     return count;
 }
 
+#if USE_MMAP
+static int mmap_scan(int fd) {
+    struct stat st;
+    int32_t remainder = 0;
+
+    if (0 > fstat(fd, &st)) {
+        perror("fstat failed");
+        return 1;
+    }
+// MAP_POPULATE is only available on Linux, but it is also practically required
+// on Linux to make mmap() even half as fast as read() for our usage.
+#if ! __linux__
+#define MAP_POPULATE 0
+#endif
+    const unsigned char * buf = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE|MAP_POPULATE, fd, 0);
+    if (buf == MAP_FAILED) {
+        perror("mmap failed");
+        return 2;
+    }
+    // madvise helps when the file isn't already cached, but that's about it
+    if (0 > madvise((void*)buf, st.st_size, MADV_SEQUENTIAL|MADV_WILLNEED)) {
+        perror("madvise failed");
+        return 3;
+    }
+    remainder = scan_slice_fast(buf, buf+st.st_size);
+    if (remainder >= 40) {
+        scan_all_slow((buf+ st.st_size) - remainder, buf+st.st_size);
+    }
+    if (munmap((void*)buf, st.st_size) != 0) {
+        return 4;
+    }
+    close(fd);
+    return 0;
+}
+#endif
+
+static void fd_readahead(int fd, off_t offset, size_t len) {
+#ifndef DO_READAHEAD
+    return;
+#endif
+#if __linux__
+    if (0 > readahead(fd, offset, len)) {
+        perror("readahead");
+    }
+#elif __APPLE__
+    struct radvisory radvise = { .ra_offset = offset, .ra_count = len };
+    if (0 > fcntl(fd, F_RDADVISE, &radvise)) {
+        perror("inner radvise");
+    }
+#endif
+    return;
+}
+
+static void fd_advise(int fd) {
+#ifndef DO_ADVISE
+    return;
+#endif
+#if __linux__
+    // same advise as would give mmap
+    posix_fadvise(fd, 0, 0, POSIX_FADV_SEQUENTIAL);
+    posix_fadvise(fd, 0, 0, POSIX_FADV_WILLNEED);
+#elif __APPLE__
+    // enable readahead on this file
+    fcntl(fd, F_RDAHEAD, 1);
+#endif
+}
+
 int main(int argc, const char *argv[]) {
+#if DO_PAGE_ALIGNED
+    int page_size = getpagesize();
+    const size_t MAX_BUF = page_size * 64;
+    unsigned char *buf;
+    if (0 > posix_memalign((void**)&buf, page_size, MAX_BUF)) {
+        perror("memalign");
+        return 20;
+    }
+#else
     // 256k sounds nice.
     // 64*4k pages or 128*2k pages or 512*512b fs blocks
     // small enough for stack allocation
     // small enough to fit in cache on modern CPU
     const size_t MAX_BUF = 64*4096;
     unsigned char buf[MAX_BUF];
+#endif
     int_fast32_t remainder = 0;
-    INST(size_t total_read = 0);
+    size_t total_read = 0;
     ssize_t nread = 0;
     INST(int scans = 0);
     int_fast32_t max_scan = 0;
     int fd = 0;
     if (argc > 1) {
         fd = open(argv[1], O_RDONLY);
+        if (fd < 0) {
+            perror("open failed");
+            return fd;
+        }
+#if USE_MMAP
+        return mmap_scan(fd);
+#endif
     }
+
+    // tell the OS to expect sequential reads
+    fd_advise(fd);
+
     assert(fd >= 0);
     while ((nread = read(fd, buf+remainder, MAX_BUF-remainder)) > 0) {
-        INST(total_read += nread);
+        total_read += nread;
+        // tell kernel to queue up the next read while we process the current one
+        if (nread == MAX_BUF-remainder) {
+            fd_readahead(fd, total_read, MAX_BUF);
+        }
         max_scan = nread + remainder;
         if (max_scan < 41) {
             remainder = max_scan;

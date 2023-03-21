@@ -34,6 +34,9 @@ scan-c: main.c
 scan-c-fast-simd: main.c
 	$(CC) $(SIMD_CFLAGS) -O3 -DNDEBUG -o $@ $<
 
+scan-c-fast-mmap: main.c
+	$(CC) $(FAST_CFLAGS) -DUSE_MMAP=1 -o $@ $<
+
 scan-c-counters: main.c
 	$(CC) $(SIMD_CFLAGS) -O3 -DDO_INST=1 -o $@ $<
 
@@ -45,6 +48,10 @@ main.s: main.c
 
 time-simd: scan-c-fast-simd
 	time ./scan-c-fast-simd < raw.tar > c.txt
+	diff -q c.txt prev.txt || diff c.txt prev.txt | wc -l
+
+time-mmap: scan-c-fast-mmap
+	time ./scan-c-fast-mmap $(SAMPLE) > c.txt
 	diff -q c.txt prev.txt || diff c.txt prev.txt | wc -l
 
 time: scan-c-fast
