@@ -29,7 +29,7 @@ hexgrep-static: main.c
 all: c.txt go.txt rs.txt grep.txt ripgrep.txt js.txt
 
 scan-c: main.c
-	$(CC) $(CFLAGS) -o $@ $<
+	$(CC) $(FAST_CFLAGS) -o $@ $<
 
 scan-c-fast-simd: main.c
 	$(CC) $(SIMD_CFLAGS) -O3 -DNDEBUG -o $@ $<
