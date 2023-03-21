@@ -290,7 +290,7 @@ static int_fast32_t scan_slice_fast(const unsigned char *buf, const unsigned cha
 #endif
 
     do {
-        assert(prev = buf);
+        assert((prev = buf));
         if (is_lower_hex(buf)) {
             buf = scan_hit_short(buf, end);
             assert(buf > prev);
