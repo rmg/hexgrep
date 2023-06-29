@@ -25,15 +25,26 @@ fn hit(needle: &[u8]) {
 fn scan_slice(inb: &[u8]) -> usize {
 	let mut count = 0;
 	let len = inb.len();
-	for (i, &b) in inb.into_iter().enumerate() {
+	let mut i = 0usize;
+	while i < len {
+		let b = inb[i];
+		if count == 0 && i+20 < len {
+			let bs = inb[i+20];
+			if !bs.is_ascii_digit() && !(b'a'..=b'f').contains(&bs) {
+				i += 20;
+				continue;
+			}
+		}
 		if b.is_ascii_digit() || (b'a'..=b'f').contains(&b) {
 			count += 1;
+			i += 1;
 			continue
 		}
 		if count == 40 {
 			hit(&inb[i-40..i]);
 		}
-		count = 0
+		count = 0;
+		i += 1;
 	}
 	if count == 40 {
 		hit(&inb[len-40..]);
