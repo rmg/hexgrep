@@ -62,5 +62,11 @@ fn sscan(mut input: impl Read) {
 }
 
 fn main() {
-	sscan(stdin().lock())
+	let args: Vec<String> = std::env::args().collect();
+	if args.len() == 2 {
+		let file = std::fs::File::open(&args[1]).unwrap();
+		sscan(file)
+	} else {
+		sscan(stdin().lock())
+	}
 }
