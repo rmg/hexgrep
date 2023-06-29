@@ -28,7 +28,16 @@ const BUF = 64 * 4096
 
 func searchWrite(buf []byte, out io.Writer) int {
 	count := 0
-	for i, b := range buf {
+	bl := len(buf)
+	for i := 0; i < bl; i++ {
+		b := buf[i]
+		if count == 0 && i+20 < bl {
+			bs := buf[i+20]
+			if !(bs >= '0' && bs <= '9') && !(bs >= 'a' && bs <= 'f') {
+				i += 20
+				continue
+			}
+		}
 		switch {
 		case b >= '0' && b <= '9':
 			fallthrough

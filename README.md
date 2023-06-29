@@ -75,6 +75,7 @@ implementations compare to each other.
 | grep | 0m18.034s | 0m15.713s | 0m2.257s |
 | ripgrep | 0m1.709s | 0m1.541s | 0m0.147s |
 | simple (Go) | 0m1.737s | 0m1.594s | 0m0.142s |
+| skip (Go) | 0m0.338s | 0m0.187s | 0m0.152s |
 | simple (Rust) | 0m1.461s | 0m1.325s | 0m0.131s |
 | skip (Rust) | 0m0.231s | 0m0.105s | 0m0.124s |
 | simple (Node) | 0m6.458s | 0m6.043s | 0m0.627s |
