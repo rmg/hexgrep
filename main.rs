@@ -15,11 +15,11 @@ limitations under the License.
 */
 
 use std::io::{Read, Write,stdin, stdout};
-use std::str;
 
 fn hit(needle: &[u8]) {
-	stdout().write(&needle).ok();
-	stdout().write(&[b'\n']).ok();
+	let mut out = stdout().lock();
+	out.write_all(needle).unwrap();
+	out.write_all(&[b'\n']).unwrap();
 }
 
 fn scan_slice(inb: &[u8]) -> usize {
