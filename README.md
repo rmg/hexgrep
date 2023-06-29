@@ -79,6 +79,7 @@ implementations compare to each other.
 | simple (Rust) | 0m1.461s | 0m1.325s | 0m0.131s |
 | skip (Rust) | 0m0.231s | 0m0.105s | 0m0.124s |
 | simple (Node) | 0m6.458s | 0m6.043s | 0m0.627s |
+| skip (Node) | 0m1.368s | 0m1.062s | 0m0.686s |
 | custom (C) | **0m0.222s** | **0m0.079s** | **0m0.141s** |
 
 By comparing the times you can see that each implementation is more or less
