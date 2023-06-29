@@ -23,38 +23,34 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -yq ripgrep
           make scan-c scan-go scan-rs
-          {
-            printf "## Versions\n"
-            grep -V
-            rg -V
-            node --version
-            rustc --version
-            go version
-            cc --version
-          } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: make c.txt
-        run: |
-          printf '### c\n' >> "$GITHUB_STEP_SUMMARY"
-          make c.txt TIME_REPORT=$GITHUB_STEP_SUMMARY
-      - name: make go.txt
-        run: |
-          printf '### go\n' >> "$GITHUB_STEP_SUMMARY"
-          make go.txt TIME_REPORT=$GITHUB_STEP_SUMMARY
-      - name: make rs.txt
-        run: |
-          printf '### rs\n' >> "$GITHUB_STEP_SUMMARY"
-          make rs.txt TIME_REPORT=$GITHUB_STEP_SUMMARY
-      - name: make grep.txt
+      - run: make c.txt
+      - run: make go.txt
+      - run: make rs.txt
+      - run: make grep.txt
         if: github.event_name != 'pull_request'
+      - run: make ripgrep.txt
+      - run: make js.txt
+      - name: summarize
         run: |
-          printf '### grep\n' >> "$GITHUB_STEP_SUMMARY"
-          make grep.txt TIME_REPORT=$GITHUB_STEP_SUMMARY
-      - name: make ripgrep.txt
-        run: |
-          printf '### ripgrep\n' >> "$GITHUB_STEP_SUMMARY"
-          make ripgrep.txt TIME_REPORT=$GITHUB_STEP_SUMMARY
-      - name: make js.txt
-        run: |
-          printf '### js\n' >> "$GITHUB_STEP_SUMMARY"
-          make js.txt TIME_REPORT=$GITHUB_STEP_SUMMARY
+          make times.md
+          {
+            printf "## Best Times\n\n"
+            cat times.md
+            printf "\n## Versions\n"
+            printf "grep: "
+            grep -V | head -n 1
+            printf "ripgrep: "
+            rg -V | head -n 1
+            printf "node: "
+            node --version | head -n 1
+            printf "rustc: "
+            rustc --version | head -n 1
+            printf "go: "
+            go version | head -n 1
+            printf "cc: "
+            cc --version | head -n 1
+            printf "\n## Sample Data \n```"
+            ls -l raw.tar
+            printf "```\n"
+          } >> "$GITHUB_STEP_SUMMARY"
