@@ -17,6 +17,11 @@ CFLAGS :=  -Werror -Wall
 FAST_CFLAGS := $(CFLAGS) -O3 -DNDEBUG
 DEBUG_CFLAGS := $(CFLAGS) -g
 SIMD_CFLAGS := $(CFLAGS) -DUSE_SIMD=1
+TIME_CMD := command time -p
+
+ifdef TIME_REPORT
+TIME_CMD := $(TIME_CMD) -a -o $(TIME_REPORT)
+endif
 
 hexgrep scan-c-fast: main.c
 	$(CC) $(FAST_CFLAGS) -o $@ $<
@@ -44,19 +49,19 @@ main.s: main.c
 	$(CC) $(CFLAGS) -O3 -DNDEBUG -S -mllvm --x86-asm-syntax=intel -o $@ $<
 
 time-simd: scan-c-fast-simd
-	time ./scan-c-fast-simd < raw.tar > c.txt
+	$(TIME_CMD) ./scan-c-fast-simd < raw.tar > c.txt
 	diff -q c.txt prev.txt || diff c.txt prev.txt | wc -l
 
 time: scan-c-fast
-	time ./scan-c-fast < raw.tar > c.txt
+	$(TIME_CMD) ./scan-c-fast < raw.tar > c.txt
 	diff -q c.txt prev.txt || diff c.txt prev.txt | wc -l
 
 counts: scan-c-counters
-	time ./scan-c-counters < raw.tar > c.txt
+	$(TIME_CMD) ./scan-c-counters < raw.tar > c.txt
 	diff -q c.txt prev.txt || diff c.txt prev.txt | wc -l
 
 test: scan-c-debug
-	time ./scan-c-debug < raw.tar > c.txt
+	$(TIME_CMD) ./scan-c-debug < raw.tar > c.txt
 	diff -q c.txt prev.txt || diff c.txt prev.txt | wc -l
 
 debug: scan-c-debug
@@ -69,30 +74,30 @@ scan-rs: main.rs
 	rustc -O -o $@ $<
 
 %.txt: scan-% $(SAMPLE)
-	time ./scan-$* < $(SAMPLE) > $@
-	time ./scan-$* < $(SAMPLE) > $@
-	time ./scan-$* < $(SAMPLE) > $@
+	$(TIME_CMD) ./scan-$* < $(SAMPLE) > $@
+	$(TIME_CMD) ./scan-$* < $(SAMPLE) > $@
+	$(TIME_CMD) ./scan-$* < $(SAMPLE) > $@
 
 js.txt: main.js $(SAMPLE)
-	time node main.js < $(SAMPLE) > $@
-	time node main.js < $(SAMPLE) > $@
-	time node main.js < $(SAMPLE) > $@
+	$(TIME_CMD) node main.js < $(SAMPLE) > $@
+	$(TIME_CMD) node main.js < $(SAMPLE) > $@
+	$(TIME_CMD) node main.js < $(SAMPLE) > $@
 
 grep.txt: $(SAMPLE)
-	time grep -E -a -o '[0-9a-f]{40}' < $(SAMPLE) > $@ || true
-	time grep -E -a -o '[0-9a-f]{40}' < $(SAMPLE) > $@ || true
-	time grep -E -a -o '[0-9a-f]{40}' < $(SAMPLE) > $@ || true
+	$(TIME_CMD) grep -E -a -o '[0-9a-f]{40}' < $(SAMPLE) > $@ || true
+	$(TIME_CMD) grep -E -a -o '[0-9a-f]{40}' < $(SAMPLE) > $@ || true
+	$(TIME_CMD) grep -E -a -o '[0-9a-f]{40}' < $(SAMPLE) > $@ || true
 
 ripgrep.txt: $(SAMPLE)
-	time rg -o -a '[a-f0-9]{40}' < $(SAMPLE) > $@ || true
-	time rg -o -a '[a-f0-9]{40}' < $(SAMPLE) > $@ || true
-	time rg -o -a '[a-f0-9]{40}' < $(SAMPLE) > $@ || true
+	$(TIME_CMD) rg -o -a '[a-f0-9]{40}' < $(SAMPLE) > $@ || true
+	$(TIME_CMD) rg -o -a '[a-f0-9]{40}' < $(SAMPLE) > $@ || true
+	$(TIME_CMD) rg -o -a '[a-f0-9]{40}' < $(SAMPLE) > $@ || true
 
 docker.txt: $(SAMPLE)
 	docker build -t hexgrep:local .
-	time docker run --volume $(abspath ${SAMPLE}):/sample --rm -i hexgrep:local sample > $@ || true
-	time docker run --volume $(abspath ${SAMPLE}):/sample --rm -i hexgrep:local sample > $@ || true
-	time docker run --volume $(abspath ${SAMPLE}):/sample --rm -i hexgrep:local sample > $@ || true
+	$(TIME_CMD) docker run --volume $(abspath ${SAMPLE}):/sample --rm -i hexgrep:local sample > $@ || true
+	$(TIME_CMD) docker run --volume $(abspath ${SAMPLE}):/sample --rm -i hexgrep:local sample > $@ || true
+	$(TIME_CMD) docker run --volume $(abspath ${SAMPLE}):/sample --rm -i hexgrep:local sample > $@ || true
 
 raw.tar:
 	docker pull node:latest

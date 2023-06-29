@@ -1,0 +1,59 @@
+name: build & test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        id: cache
+        with:
+          key: shared
+          path: raw.tar
+      - if: steps.cache.outputs.cache-hit != 'true'
+        run: make raw.tar
+      - name: build & install
+        run: |
+          sudo apt-get update
+          sudo apt-get install ripgrep
+          make scan-c scan-go scan-rs
+          {
+            printf "## Versions\n"
+            grep -V
+            rg -V
+            node --version
+            rustc --version
+            go version
+            cc --version
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: make c.txt
+        run: |
+          printf '### c\n' >> "$GITHUB_STEP_SUMMARY"
+          make c.txt TIME_REPORT=$GITHUB_STEP_SUMMARY
+      - name: make go.txt
+        run: |
+          printf '### go\n' >> "$GITHUB_STEP_SUMMARY"
+          make go.txt TIME_REPORT=$GITHUB_STEP_SUMMARY
+      - name: make rs.txt
+        run: |
+          printf '### rs\n' >> "$GITHUB_STEP_SUMMARY"
+          make rs.txt TIME_REPORT=$GITHUB_STEP_SUMMARY
+      - name: make grep.txt
+        run: |
+          printf '### grep\n' >> "$GITHUB_STEP_SUMMARY"
+          make grep.txt TIME_REPORT=$GITHUB_STEP_SUMMARY
+      - name: make ripgrep.txt
+        run: |
+          printf '### ripgrep\n' >> "$GITHUB_STEP_SUMMARY"
+          make ripgrep.txt TIME_REPORT=$GITHUB_STEP_SUMMARY
+      - name: make js.txt
+        run: |
+          printf '### js\n' >> "$GITHUB_STEP_SUMMARY"
+          make js.txt TIME_REPORT=$GITHUB_STEP_SUMMARY
