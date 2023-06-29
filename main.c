@@ -227,7 +227,7 @@ static const unsigned char * scan_hit_short(const unsigned char *buf, const unsi
     // Rather than checking them in linear order, we use statistics to determine
     // the optimal order to check for an early exit.
     // TODO: accept this ordering as input
-    // TOOD: extra credit, generate counts from first block
+    // TODO: extra credit, generate counts from first block
     const int checks[39] = {
         5,
         32,
