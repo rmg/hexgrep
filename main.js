@@ -37,6 +37,10 @@ function is_hex(c) {
 function scan_slice(buf) {
   let count = 0;
   for (let i = 0; i< buf.length; i++) {
+    if (count === 0 && i+20 < buf.length && !is_hex(buf[i+20])) {
+      i += 20;
+      continue;
+    }
     if (is_hex(buf[i])) {
       count++;
       continue;

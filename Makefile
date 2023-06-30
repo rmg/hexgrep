@@ -17,11 +17,7 @@ CFLAGS :=  -Werror -Wall
 FAST_CFLAGS := $(CFLAGS) -O3 -DNDEBUG
 DEBUG_CFLAGS := $(CFLAGS) -g
 SIMD_CFLAGS := $(CFLAGS) -DUSE_SIMD=1
-TIME_CMD := command time -p
-
-ifdef TIME_REPORT
-TIME_CMD := $(TIME_CMD) -a -o $(TIME_REPORT)
-endif
+TIME_CMD = command time -p -a -o $@.times
 
 hexgrep scan-c-fast: main.c
 	$(CC) $(FAST_CFLAGS) -o $@ $<
@@ -72,6 +68,15 @@ scan-go: main.go
 
 scan-rs: main.rs
 	rustc -O -o $@ $<
+
+times.md:
+	{ \
+		printf '\n|     |  real |  user | system |\n'; \
+		printf   '|-----|-------|-------|--------|\n'; \
+		for t in *.txt.times; do \
+			printf '| %3s | %5s | %5s | %6s |\n' $$(basename -s .txt.times $$t) $$(awk -f times.awk $$t); \
+		done; \
+	} > $@
 
 %.txt: scan-% $(SAMPLE)
 	$(TIME_CMD) ./scan-$* < $(SAMPLE) > $@

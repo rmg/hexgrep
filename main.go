@@ -16,19 +16,24 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
 	"io"
-	"log"
 	"os"
-	"runtime"
-	"runtime/pprof"
 )
 
 const BUF = 64 * 4096
 
 func searchWrite(buf []byte, out io.Writer) int {
 	count := 0
-	for i, b := range buf {
+	bl := len(buf)
+	for i := 0; i < bl; i++ {
+		b := buf[i]
+		if count == 0 && i+20 < bl {
+			bs := buf[i+20]
+			if !(bs >= '0' && bs <= '9') && !(bs >= 'a' && bs <= 'f') {
+				i += 20
+				continue
+			}
+		}
 		switch {
 		case b >= '0' && b <= '9':
 			fallthrough
@@ -76,31 +81,4 @@ func scan(input io.Reader) {
 
 func main() {
 	scan(os.Stdin)
-}
-
-func pmain() {
-	c, err := os.Create("sha1scan.cpu.prof")
-	if err != nil {
-		log.Fatal("could not create CPU profile: ", err)
-	}
-	defer c.Close()
-	if err := pprof.StartCPUProfile(c); err != nil {
-		log.Fatal("could not start CPU profile: ", err)
-	}
-
-	scan(os.Stdin)
-
-	pprof.StopCPUProfile()
-	runtime.GC() // get up-to-date statistics
-
-	for _, p := range pprof.Profiles() {
-		m, err := os.Create(fmt.Sprintf("sha1scan.%s.prof", p.Name()))
-		if err != nil {
-			log.Fatalf("could not create %s profile: ", p.Name(), err)
-		}
-		defer m.Close()
-		if err := p.WriteTo(m, 1); err != nil {
-			log.Fatal("could not write %s profile: ", p.Name(), err)
-		}
-	}
 }
